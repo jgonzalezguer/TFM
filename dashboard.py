@@ -262,7 +262,7 @@ app.layout = html.Div([
                         id="dropdown-atributos-cluster",
                         options=[{"label": a, "value": a} for a in atributos_num],   
                         multi=True,
-                        value= ["bajo_carbono_proporción_energía", "fósil_proporción_energía", "energía_per_capita", "GEI_per_capita"],                         
+                        value= ["fósil_proporción_energía", "energía_per_capita", "GEI_per_capita"],                         
                         clearable=False,
                         style={'color': '#002a77'}
                     ),
