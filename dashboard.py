@@ -14,6 +14,8 @@ import dash_bootstrap_components as dbc
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+import multiprocessing as mp   
+
 
 # CARGA DE DATOS
 df = pd.read_excel('owid-energy-data.xlsx')  # DataFrame principal con los datos energéticos
@@ -23,6 +25,30 @@ world = world.rename(columns={"POP_EST": "value", "NAME": "name"})
 
 
 #PREPROCESADO DE DATOS
+
+
+#Añado pib de la UE (27 miembros)
+iso_ue27 = [
+    "DEU", "AUT", "BEL", "BGR", "CZE", "CYP", "HRV", "DNK", "SVK",
+    "SVN", "ESP", "EST", "FIN", "FRA", "GRC", "HUN", "IRL", "ITA",
+    "LVA", "LTU", "LUX", "MLT", "NLD", "POL", "PRT", "ROU", "SWE"
+]# Lista de códigos ISO de los países de la Unión Europea (27)
+
+# Filtrar los países de la UE por código ISO
+df_ue27 = df[df["iso_code"].isin(iso_ue27)]
+
+# Sumar el PIB por año EXCLUYENDO 2023
+pib_ue27 = df_ue27[df_ue27["año"] != 2023].groupby("año")["pib"].sum().reset_index()
+
+# Añadir columna 'país' para fusionar con 'Unión Europea(27)'
+pib_ue27["país"] = "Unión Europea(27)"
+
+# Fusionar con el DataFrame original para actualizar el PIB
+df["pib"] = df.merge(pib_ue27, on=["país", "año"], how="left")["pib_y"].combine_first(df["pib"])
+
+# Asegurar que el PIB de "Unión Europea(27)" en 2023 sea NaN porque no hay datos en algunos de los 27 países
+df.loc[(df["país"] == "Unión Europea(27)") & (df["año"] == 2023), "pib"] = np.nan
+
 
 # Creación de nuevas variables derivadas en el DataFrame principal
 
@@ -68,6 +94,7 @@ df_metadatos = pd.concat([df_metadatos, nueva_fila_pib_pc, nueva_fila_intensidad
 
 countries = list(set(df[df['iso_code'].notnull()]['país'])) # Lista de países: se seleccionan aquellas filas con código ISO (las filas que no tienen código ISO no pertenecen a países) 
 countries.append("Mundo")    # Se añade "Mundo" para permitir la visualización de valores agregados globales en la sección de Series Temporales
+countries.append("Unión Europea(27)") 
 countries.append("Kosovo")   # Se añade manualmente Kosovo para que la lista de países coincida con los del GeoDataFrame
 
 atributos = list(df.columns) # Lista de atributos del DataFrame principal
@@ -109,9 +136,11 @@ iso_to_spanish = dict(zip(df.iso_code, df['país']))
 # Se usa la columna ISO_A3 como clave de mapeo y se conserva el nombre original si no se encuentra equivalencia
 world['name'] = world['ISO_A3'].map(iso_to_spanish).fillna(world['name'])
 
-
 # Creación de un DataFrame para series temporales, que incluye tanto países como el agregado mundial
-df_conmundo = df[~df.iso_code.isnull() | (df["país"] == "Mundo")]
+df_conmundo = df[~df.iso_code.isnull() | (df["país"] == "Mundo")| (df["país"] == "Unión Europea(27)")]
+
+
+
 
 # Eliminación de filas sin código ISO (es decir, que no representan países) del DataFrame principal
 df = df[~df.iso_code.isnull()]
@@ -377,7 +406,7 @@ app.layout = html.Div([
                     html.P("Atributo a mostrar:"),
                     # Dropdown con el atributo a mostrar
                     dcc.Dropdown(id="dropdown11", options=atributos_num, value='población', clearable=False, style={'color': '#002a77'}),
-                    html.P("Países:"),
+                    html.P("Países o regiones:"),
                     # Dropdown con los países a mostrar
                     dcc.Dropdown(
                         id="dropdown-countries",
@@ -1038,6 +1067,15 @@ def grafica1(atributo, countries, option):
 
 
 # Callback para mostrar u ocultar la sección "Consultas SQL" al hacer clic en el botón
+def run_sql(query_text, df, q):
+    try:
+        if not query_text.strip().lower().startswith("select"):
+            q.put(("error", "Solo se permiten consultas de lectura (instrucciones SELECT)."))
+            return
+        result = ps.sqldf(query_text, {"tabla": df})
+        q.put(("result", result))
+    except Exception as e:
+        q.put(("error", str(e)))
 
 @app.callback(
     Output("SQL-content", "style"),  # Cambia el estilo (visible/oculto) del contenido
@@ -1058,34 +1096,51 @@ def toggle_SQL(n_clicks, is_visible):
     Input('execute-query', 'n_clicks'),    # Clic en el botón para ejecutar la consulta
     State('sql-input', 'value')            # Consulta SQL escrita por el usuario (estado actual del input)
 )
-
 def run_query(n_clicks, query):
-    if n_clicks == 0 or not query: # Si no se ha hecho clic o no hay consulta escrita, no se hace nada
+    if n_clicks == 0 or not query:
         return "", {}
 
-    try:
-        if not query.strip().lower().startswith("select"): # Solo se permiten consultas SELECT por seguridad y simplicidad
-            return html.Div(["Solo se permiten consultas de lectura (instrucciones SELECT)."]), {}
-        # Se ejecuta la consulta usando pandasql sobre el DataFrame principal (df), al que llamamos 'tabla' dentro de la consulta (así se ha explicado en las instrucciones en html)
-        result = ps.sqldf(query, {"tabla": df})
-        # Se convierten los resultados a diccionario para almacenarlos, para si el usuario quiere descargarlos (ver siguiente callback)
-        data_dict = result.to_dict('records') 
-        # Se muestran los resultados en una tabla interactiva de Dash y se devuelve también el diccionario con los datos almacenados
+
+    q = mp.Queue()
+    p = mp.Process(target=run_sql, args=(query, df, q))
+    p.start()
+    p.join(timeout=40)
+
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        return html.Div([
+            " La consulta SQL ha tardado demasiado tiempo y ha sido cancelada automáticamente (timeout de 40 segundos)."
+        ], style={'color': 'red'}), {}
+
+    if not q.empty():
+        status, content = q.get()
+        if status == "error":
+            return html.Div([
+                " Error al ejecutar la consulta: ", content
+            ], style={'color': 'red'}), {}
+
+        result = content
+        data_dict = result.to_dict('records')
         return html.Div([
             html.H4("Resultados de la consulta"),
             dash_table.DataTable(
                 columns=[{"name": col, "id": col} for col in result.columns],
-                data=result.to_dict('records'),
+                data=data_dict,
                 style_table={'overflowX': 'auto'},
                 style_header={'backgroundColor': 'lightgrey', 'fontWeight': 'bold'},
                 style_cell={'textAlign': 'left', 'padding': '5px'},
-                page_size=10,  
-                sort_action='native',    
+                page_size=10,
+                sort_action='native',
             )
         ]), data_dict
-    # Si hay un error al ejecutar la consulta, se muestra al usuario en color rojo.
-    except Exception as e:
-        return html.Div(["Error al ejecutar la consulta: ", str(e)], style={'color': 'red'}), {}
+
+    else:
+        return html.Div([
+            " La consulta no pudo completarse (proceso sin respuesta)."
+        ], style={'color': 'red'}), {}
+
+
 
 # Callback que permite descargar en CSV los resultados de la consulta SQL ejecutada previamente(almacenados como diccionario en el output query-result-store del callback anterior).
 @app.callback(
