@@ -16,16 +16,13 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 import multiprocessing as mp   
 
-
 # CARGA DE DATOS
 df = pd.read_excel('owid-energy-data.xlsx')  # DataFrame principal con los datos energéticos
 df_metadatos = pd.read_excel('owid-energy-data.xlsx', sheet_name=1)  # DataFrame con los metadatos: definiciones, unidades y fuentes de datos
 world = gpd.read_file("ne_110m_admin_0_countries.geojson")  # GeoDataFrame con los polígonos de los países
 world = world.rename(columns={"POP_EST": "value", "NAME": "name"}) 
 
-
 #PREPROCESADO DE DATOS
-
 
 #Añado pib de la UE (27 miembros)
 iso_ue27 = [
@@ -48,7 +45,6 @@ df["pib"] = df.merge(pib_ue27, on=["país", "año"], how="left")["pib_y"].combin
 
 # Asegurar que el PIB de "Unión Europea(27)" en 2023 sea NaN porque no hay datos en algunos de los 27 países
 df.loc[(df["país"] == "Unión Europea(27)") & (df["año"] == 2023), "pib"] = np.nan
-
 
 # Creación de nuevas variables derivadas en el DataFrame principal
 
@@ -88,24 +84,31 @@ nueva_fila_GEIpc = pd.DataFrame({
 })
 
 df_metadatos = pd.concat([df_metadatos, nueva_fila_pib_pc, nueva_fila_intensidad, nueva_fila_GEIpc], ignore_index=True)
+df_metadatos = df_metadatos[~df_metadatos["columna"].str.contains("cambio", case=False, na=False)]
+
 
 
 # Creación de listas de países y atributos para los menús desplegables (dropdowns) del dashboard
-
+df.loc[df["país"] == "URSS", "iso_code"] = "USR"  #Asigno a la URSS un código ISO para considerarlo como país en el filtrado siguiente
 countries = list(set(df[df['iso_code'].notnull()]['país'])) # Lista de países: se seleccionan aquellas filas con código ISO (las filas que no tienen código ISO no pertenecen a países) 
 countries.append("Mundo")    # Se añade "Mundo" para permitir la visualización de valores agregados globales en la sección de Series Temporales
-countries.append("Unión Europea(27)") 
+countries.append("Unión Europea(27)")
 countries.append("Kosovo")   # Se añade manualmente Kosovo para que la lista de países coincida con los del GeoDataFrame
 
+# Lista de códigos ISO de las repúblicas ex-soviéticas
+ex_soviet_iso = ["ARM", "AZE", "BLR", "EST", "GEO", "KAZ", "KGZ", "LTU", "LVA", "MDA", "RUS", "TJK", "TKM", "UKR", "UZB"]
+
+# Eliminación de datos de la URSS a partir de 1991 y de ex-sovieticos antes de 1991 (owid presenta datos de estos países por separado antes de la  fecha oficial de disolución de la URSS)
+df = df[~((df["país"] == "URSS") & (df["año"] > 1991))]
+df = df[~((df["iso_code"].isin(ex_soviet_iso)) & (df["año"] <= 1991))]  
+
 atributos = list(df.columns) # Lista de atributos del DataFrame principal
-atributos_num = [atributo for atributo in atributos if df[atributo].dtypes == "float64"] # Filtro de atributos numéricos
+atributos_num = [atributo for atributo in atributos if df[atributo].dtypes == "float64" and "cambio" not in atributo]# Filtro de atributos numéricos de interés (no interesan los que sean de cambio para los gráficos escogidos
 atributos_num_None = ["None"] + atributos_num # Lista de atributos numéricos con opción "None" (para color/tamaño opcional en gráficos de dispersión)
 atributos_num_absolutos = [
     atributo for atributo in atributos_num
     if all(x not in atributo for x in ["per", "cambio", "proporción", "importaciones", "carbono_intensidad_elec", "intensidad_energetica"])
 ] # Atributos numéricos absolutos, excluyendo proporciones, cambios, intensidades y otros que no aplican en un treemap
-
-
 
 # Creación de un diccionario de unidades a partir de los metadatos
 # Se utilizará en las visualizaciones para mostrar las unidades correspondientes a cada atributo
@@ -113,9 +116,8 @@ atributos_num_absolutos = [
 dict_unidades=dict()
 
 for columna in atributos:
-        try: dict_unidades[columna]=df_metadatos[df_metadatos.columna==columna].unidades.values[0]
-        except: dict_unidades[columna]=df_metadatos[df_metadatos.columna==columna].unidades.values
-
+    try: dict_unidades[columna]=df_metadatos[df_metadatos.columna==columna].unidades.values[0]
+    except: dict_unidades[columna]=df_metadatos[df_metadatos.columna==columna].unidades.values
 
 # Corrección de códigos ISO para mejorar la coherencia entre el DataFrame principal y el GeoDataFrame
 
@@ -128,7 +130,6 @@ df.iso_code[df["país"]=='France']='FRA'
 world.ISO_A3[world.name=='Norway']='NOR'
 df.iso_code[df["país"]=='Norway']='NOR'
 
-
 # Diccionario que mapea los códigos ISO a los nombres de países en español (extraídos del DataFrame principal)
 iso_to_spanish = dict(zip(df.iso_code, df['país']))
 
@@ -139,12 +140,8 @@ world['name'] = world['ISO_A3'].map(iso_to_spanish).fillna(world['name'])
 # Creación de un DataFrame para series temporales, que incluye tanto países como el agregado mundial
 df_conmundo = df[~df.iso_code.isnull() | (df["país"] == "Mundo")| (df["país"] == "Unión Europea(27)")]
 
-
-
-
 # Eliminación de filas sin código ISO (es decir, que no representan países) del DataFrame principal
 df = df[~df.iso_code.isnull()]
-
 
 # Se añade la columna 'continente' al DataFrame principal usando los códigos ISO como clave. Esta columna 'continente' se usará para agregar por continentes en los treemap
 
@@ -257,8 +254,12 @@ app.layout = html.Div([
             ], style={'width': '15%', 'padding': '20px'}),
             # Columna derecha: gráfico
             html.Div([
-                dcc.Graph(id="graph-geo", style={"width": "70%"}),
-            ], style={'width': '80%', 'padding': '0px'})
+                dcc.Graph(
+                    id="graph-geo",
+                    style={"width": "100%", "height": "80vh","maxHeight": "800px","minHeight": "400px"},  
+                    config={"responsive": True}                 
+                ),
+            ], style={'width': '100%', 'padding': '0px', 'margin': '0 auto'})
             ], style={'display': 'flex'}),
         ],  id="geo-content", style={'display': 'block'}) 
     ], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),
@@ -304,18 +305,17 @@ app.layout = html.Div([
             ], style={'width': '15%', 'padding': '20px'}),
             # Columna derecha: gráfico de dispersión
             html.Div([
-                dcc.Graph(id="graph-clusters-1", style={"width": "100%"}),
+                dcc.Graph(id="graph-clusters-1", style={"width": "100%", "height": "100%"}),
             ], style={'width': '85%', 'padding': '0px'})
             ], style={'display': 'flex'}),
             # Gráfico Mapamundi con clusters
             html.Div([
-                html.Div([
-                    html.Div([], style={'width': '10%'}),
-                    html.Div([
-                        dcc.Graph(id="graph-clusters-2", style={"width": "100%"})
-                    ], style={'width': '100%'})
-                ], style={'display': 'flex'})
-            ])
+                dcc.Graph(
+                    id="graph-clusters-2",
+                    style={"width": "100%", "height": "80vh","maxHeight": "800px","minHeight": "400px"},
+                    config={"responsive": True}
+                )
+            ], style={'width': '100%', 'padding': '0px', 'margin': '0 auto'})
         ],  id="clusters-content", style={'display': 'block'}) 
     ], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),
 
@@ -375,8 +375,8 @@ app.layout = html.Div([
             
             # Columna derecha con el diagrama de dispersión
             html.Div([
-                dcc.Graph(id="graph2", style={"width": "100%"}),
-            ], style={'width': '70%', 'padding': '20px'})
+                dcc.Graph(id="graph2", style={"width": "100%", "height": "100%"}),
+            ], style={'width': '85%', 'padding': '20px'})
             
         ], style={'display': 'flex'}), 
         
@@ -430,8 +430,8 @@ app.layout = html.Div([
                 ], style={'width': '15%', 'padding': '20px'}),
                 # Gráfico (columna derecha)
                 html.Div([
-                    dcc.Graph(id="graph1", style={"width": "100%"}),
-                ], style={'width': '70%', 'padding': '20px'})
+                    dcc.Graph(id="graph1", style={"width": "100%", "height": "100%"}),
+                ], style={'width': '85%', 'padding': '20px'})
             ], style={'display': 'flex'}),
           ],  id="ts-content", style={'display': 'block'})
     ], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),
@@ -537,100 +537,107 @@ def toggle_geo(n_clicks, is_visible):
 # Función que genera la figura correspondiente a la sección "Distribución mundial"
 # según el tipo de visualización seleccionada, el atributo, el año y el número de países (solo para gráfico de barras)
 
-def actualizar_geo(vista, atributo, año,num_paises):
+def actualizar_geo(vista, atributo, año, num_paises):
     # Mapamundi
     if vista == 'world':
-        # Crear una serie de Pandas con los valores del atributo por país en ese año, para luego asignarsela a la columna value del GeoDataFrame "world"
-        nueva_column=pd.Series(data=np.repeat(np.nan,world.shape[0]))
+        # Crear una serie de Pandas con los valores del atributo por país en ese año, para luego asignársela a la columna value del GeoDataFrame "world"
+        nueva_column = pd.Series(data=np.repeat(np.nan, world.shape[0]))
         for i in range(world.shape[0]):
-            try: nueva_column.iloc[i]=df[(df.año==año)&(df.iso_code==world.iloc[i].ISO_A3)][atributo].values[0]
-            except: nueva_column.iloc[i]=np.nan
-        
-        world.value=nueva_column
-        
+            try:
+                nueva_column.iloc[i] = df[(df.año == año) & (df.iso_code == world.iloc[i].ISO_A3)][atributo].values[0]
+            except:
+                nueva_column.iloc[i] = np.nan
+        world.value = nueva_column
+        # Si el año es <= 1991, asignar valor y nombre de "URSS" a los países ex-soviéticos
+        if año <= 1991:
+            try:
+                valor_URSS = df[(df.año == año) & (df["país"] == "URSS")][atributo].values[0]
+            except:
+                valor_URSS = np.nan
+            world.loc[world['ISO_A3'].isin(ex_soviet_iso), 'value'] = valor_URSS
+            world.loc[world['ISO_A3'].isin(ex_soviet_iso), 'name'] = 'URSS'
         # Capa base para mostrar países sin datos
-        world_base=world.copy()
+        world_base = world.copy()
         world_base["value"] = world["value"].fillna(-1).apply(lambda x: "Sin datos" if x == -1 else "Con datos")  # Usa -1 para distinguir sin datos
-        
-               
         world["indice"] = world.index
         world_base["indice"] = world_base.index
-        
-        # Se crea la figura, con plotly-express cloropleth, de la capa base en blanco/gris según disponibilidad de datos
+        # Se crea la figura de base (gris/blanco según datos) y la figura de datos (escala continua)
         fig = px.choropleth(world_base, geojson=world_base.geometry, locations="indice", 
                              color="value",
                              color_discrete_map={"Sin datos": "lightgray", "Con datos": "white"},
                              hover_name="name",  
-                             hover_data={"value": False,"indice":False},  
-                             width=1500, height=600)
-
-        # Se crea la figura, con plotly-express cloropleth, de la capa con los valores del atributo y escala de color continua
+                             hover_data={"value": False, "indice": False}, 
+                             title=f"Mapa coroplético mundial de {atributo} ({dict_unidades[atributo]})  en el año {año}"                             
+                             )
         fig_data = px.choropleth(world, geojson=world.geometry, locations="indice",  
                              color="value", 
                              hover_name="name", 
-                             hover_data={"value": True,"indice":False},  
+                             hover_data={"value": True, "indice": False},  
                              color_continuous_scale=px.colors.sequential.Plasma,
                              labels={"value": f"{atributo} ({dict_unidades[atributo]})"},
-                             width=1500, height=600)
-
+                             title=f"Mapa coroplético mundial de {atributo} ({dict_unidades[atributo]}) en el año {año}"
+                             )
         # Añadir capa de datos sobre el mapa base
         fig.add_trace(fig_data.data[0])  
-
         # Mejoras estéticas de la figura
         fig.update_geos(fitbounds="locations", visible=False)
-        fig.update_coloraxes(colorbar_title=f"{atributo} ({dict_unidades[atributo]})")
+        fig.update_coloraxes(colorbar_title="valor")
         fig.update_traces(showlegend=False)
+        fig.update_layout(
+            autosize=True,
+            margin=dict(l=0, r=0, t=40, b=0), 
+            coloraxis_colorbar=dict(
+                title="valor",
+                x=0.975,  
+                len=0.75 )
+            )  
 
+        # Revertir nombre de países ex-soviéticos a sus nombres originales (para futuras interacciones)
+        if año <= 1991:
+            world.loc[world['ISO_A3'].isin(ex_soviet_iso), 'name'] = world.loc[world['ISO_A3'].isin(ex_soviet_iso), 'ISO_A3'].map(iso_to_spanish).fillna(world.loc[world['ISO_A3'].isin(ex_soviet_iso), 'name'])
         return fig
-        
-        
     # Treemap            
-    elif vista=='treemap':
+    elif vista == 'treemap':
         # Verificar si el atributo es adecuado para un treemap (magnitud absoluta y positiva)
         if atributo in atributos_num_absolutos:
-            df_año = df[df.año == año].copy().dropna(subset=["continente"]) #Se filtran los datos para el año escogido
+            # Aplicar lógica histórica: URSS hasta 1991, repúblicas ex-soviéticas desde 1991
+            df_año = df[df.año == año].copy()
+            if año <= 1991:
+                df_año = df_año[~(df_año['iso_code'].isin(ex_soviet_iso) & (df_año['país'] != 'URSS'))]
+                df_año.loc[df_año['país'] == 'URSS', 'continente'] = 'Europa'
+            elif año > 1991:
+                df_año = df_año[df_año['país'] != 'URSS']
+            df_año = df_año.dropna(subset=['continente'])
             total_mundial = df_año[atributo].sum()
-            
-            # Generar treemap jerárquico: Mundo → Continente → País con plotly-express treemap
+            # Generar treemap jerárquico: Mundo → Continente → País
             fig = px.treemap(
                 df_año, 
                 path=[px.Constant("Mundo"), 'continente', 'país'], 
                 values=atributo, 
                 labels={atributo: f"{atributo} ({dict_unidades[atributo]})"},
-                width=1300, height=500
+                title=f"Treemap de {atributo} ({dict_unidades[atributo]}) en el año {año}"
             )
-            
             # Personalización de etiquetas y porcentaje sobre el total
             for trace in fig.data:
                 customdata = []
                 text_values = []
-                
                 for value, label in zip(trace.values, trace.labels):
                     percent = (value / total_mundial) * 100 if total_mundial > 0 else None
                     customdata.append([percent])
-                    
-
                     text_values.append(f"{label}<br>{value:,.2f} {dict_unidades[atributo]}<br>{percent:.2f}%")
-
                 trace.customdata = np.array(customdata)
                 trace.text = text_values  
                 trace.texttemplate = "%{text}"  
-                
-         
             # Tooltip personalizado y color raíz
             fig.update_traces(
                 root_color='#ADD8E6',
-                hovertemplate='<b>%{label}</b><br>' + atributo +
-                              f' ({dict_unidades[atributo]}): ' + '%{value} <br>' + 
-                              'Porcentaje: %{customdata[0]:.2f}%<extra></extra>'
+                hovertemplate='<b>%{label}</b><br>' + atributo + f' ({dict_unidades[atributo]}): ' + '%{value} <br>' + 'Porcentaje: %{customdata[0]:.2f}%<extra></extra>'
             )
-
             fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
             return fig
         else: 
            # Si el atributo no es apto para treemap (por ser relativo o contener valores negativos)
            fig = go.Figure()
-
            fig.add_annotation(
                 text="Un treemap no es una visualización apropiada para este tipo de atributo.",
                 x=0.5, y=0.5,
@@ -638,43 +645,49 @@ def actualizar_geo(vista, atributo, año,num_paises):
                 showarrow=False,
                 font=dict(size=20)
             )
-
            fig.update_layout(
-                width=1300, height=500,
                 xaxis={'visible': False},
                 yaxis={'visible': False},
                 plot_bgcolor="#f0f0f0",
                 margin=dict(t=50, l=25, r=25, b=25)
             )
-
            return fig
-           
     # Diagrama de barras       
     else:
-    
-            df_año = df[df.año == año].copy().dropna(subset=["continente"])  #Se filtran los datos para el año escogido
-            df_top = df_año.nlargest(num_paises, atributo)  #se seleccionan los N mayores
-            df_top["rank"] = range(1, len(df_top) + 1)  #Se crea una nueva columna con el número en el ranking
-            df_top=df_top.sort_values(atributo, ascending=False)  #Se ordenan los valores del atributo de mayor a menor
+        df_año = df[df.año == año].copy()
+        # Aplicar lógica histórica: URSS hasta 1991, repúblicas ex-soviéticas desde 1991
+        if año <= 1991:
+            df_año = df_año[~(df_año['iso_code'].isin(ex_soviet_iso) & (df_año['país'] != 'URSS'))]
+            df_año.loc[df_año['país'] == 'URSS', 'continente'] = 'Europa'
+        elif año > 1991:
+            df_año = df_año[df_año['país'] != 'URSS']
+        df_año = df_año.dropna(subset=['continente'])
+        df_top = df_año.nlargest(num_paises, atributo)  # se seleccionan los N mayores
+        df_top["rank"] = range(1, len(df_top) + 1)  # Se crea una nueva columna con el número en el ranking
+        df_top = df_top.sort_values(atributo, ascending=False)  # Se ordenan los valores del atributo de mayor a menor
+        # Creación de la figura con Plotly-express bar    
+        fig = px.bar(
+            df_top, 
+            x=atributo,  
+            y="país",  
+            color="país",
+            orientation="h",  
+            labels={atributo: f"{atributo} ({dict_unidades[atributo]})"},
+            hover_data={"país": True, "rank": True, atributo: True},
+            title=f"Top {num_paises} países según el atributo {atributo} en el año {año}",
             
-            # Creación de la figura con Plotly-express bar    
-            fig = px.bar(
-                df_top, 
-                x=atributo,  
-                y="país",  
-                color="país",
-                orientation="h",  
-                labels={atributo: f"{atributo} ({dict_unidades[atributo]})"},hover_data={"país":True,'rank':True,atributo:True},
-                title=f"Top {num_paises} países según el atributo {atributo} en el año {año}",
-                width=1300, height=500
-                )
-            # Mejoras estéticas de la figura
-            fig.update_layout(plot_bgcolor="white",showlegend=False)
-            fig.update_yaxes(showgrid=False)
-            fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGrey')
-            
-            return fig
-
+        )
+        # Mejoras estéticas de la figura
+        fig.update_layout(plot_bgcolor="white", showlegend=False)
+        fig.update_yaxes(showgrid=False)
+        fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGrey')
+        fig.update_layout(
+            height=max(200, 20 * num_paises),  
+            plot_bgcolor="white", 
+            showlegend=False,
+            margin=dict(t=50, l=100, r=30, b=40)  
+        )
+        return fig
 
 # Callback para mostrar u ocultar el slider de número de países según el tipo de gráfico seleccionado
 @app.callback(
@@ -750,8 +763,7 @@ def actualizar_clusters(atributos, año, num_clusters):
             color_discrete_map={"Sin datos": "lightgray"},
             hover_name="name",
             hover_data=hover_dict,
-            width=1500,
-            height=600
+
         )
         fig2.update_geos(fitbounds="locations", visible=False)
         fig2.update_coloraxes(showscale=False)
@@ -760,7 +772,7 @@ def actualizar_clusters(atributos, año, num_clusters):
             title_text=f"No hay datos suficientes para agrupar en {num_clusters} clusters en el año {año}",
             plot_bgcolor="white"
         )
-
+        
         fig1.update_layout(plot_bgcolor="white")
         fig2.update_layout(plot_bgcolor="white")
 
@@ -840,19 +852,42 @@ def actualizar_clusters(atributos, año, num_clusters):
         fig1.update_layout(plot_bgcolor="white")
 
 
-    # Gráfico 2 (mapamundi)
-    df_map = df_cluster.set_index("iso_code")
+    # Gráfico 2 (mapamundi con clustering)
+    df_map = df_cluster.set_index("iso_code").copy()
+
+    # Asignar cluster de la URSS a repúblicas ex-soviéticas si el año es <= 1991
+    if año <= 1991:
+        try:
+            cluster_URSS = df_cluster[(df_cluster["país"] == "URSS") & (df_cluster["año"] == año)]["cluster"].values[0]
+        except:
+            cluster_URSS = "Sin datos"
+        for iso in ex_soviet_iso:
+            df_map.loc[iso, "cluster"] = cluster_URSS
+            df_map.loc[iso, "país"] = "URSS"  # Para que el hover muestre URSS
+            # Copiar los atributos a mostrar
+            for col in atributos:
+                try:
+                    val = df_cluster[(df_cluster["país"] == "URSS") & (df_cluster["año"] == año)][col].values[0]
+                    df_map.loc[iso, col] = val
+                except:
+                    df_map.loc[iso, col] = np.nan
+
+    # Asignar los valores al GeoDataFrame
     world["grupo"] = world["ISO_A3"].map(df_map["cluster"])
     world["grupo"] = world["grupo"].fillna("Sin datos").astype(str)
     world["indice"] = world.index
 
-
+    # Asignar valores de atributos como columnas (para hover)
     hover_dict = {"grupo": True, "indice": False, "name": False}
     for col in atributos:
         if col in df_map.columns:
             col_label = f"{col} ({dict_unidades[col]})" if col in dict_unidades else col
             world[col_label] = world["ISO_A3"].map(df_map[col])
             hover_dict[col_label] = True
+
+    # Si es año ≤ 1991, poner nombre "URSS" a los ex-soviéticos
+    if año <= 1991:
+        world.loc[world["ISO_A3"].isin(ex_soviet_iso), "name"] = "URSS"
 
     fig2 = px.choropleth(
         world,
@@ -862,8 +897,7 @@ def actualizar_clusters(atributos, año, num_clusters):
         color_discrete_map=colores,
         hover_name="name",
         hover_data=hover_dict,
-        width=1500,
-        height=600
+        
     )
     fig2.update_geos(fitbounds="locations", visible=False)
     fig2.update_coloraxes(showscale=False)
@@ -872,8 +906,20 @@ def actualizar_clusters(atributos, año, num_clusters):
         title_text=f"Clustering de países para el año {año} (Mapamundi)",
         plot_bgcolor="white"
     )
+    fig2.update_layout(
+            autosize=True,
+            margin=dict(l=0, r=0, t=40, b=0), 
+            coloraxis_colorbar=dict(
+                title="valor",
+                x=0.95,  
+                len=0.75 )
+            )  
+    # Revertir nombre para mantener nombres originales luego
+    if año <= 1991:
+        world.loc[world['ISO_A3'].isin(ex_soviet_iso), 'name'] = world.loc[world['ISO_A3'].isin(ex_soviet_iso), 'ISO_A3'].map(iso_to_spanish).fillna(world.loc[world['ISO_A3'].isin(ex_soviet_iso), 'name'])
 
     return fig1, fig2
+
 
 
 
@@ -954,7 +1000,7 @@ def grafica2(año, atributo_x, atributo_y, atributo_tamaño, atributo_color, esc
                       hover_data={"país": True, atributo_x: True, atributo_y: True},
                       labels={atributo_x: f"{atributo_x} ({dict_unidades[atributo_x]})",
                               atributo_y: f"{atributo_y} ({dict_unidades[atributo_y]})"},
-                      width=1400, height=500)
+                      )
     
     elif atributo_tamaño == "None":
         fig2 = px.scatter(df_año, x=atributo_x, y=atributo_y, color=atributo_color, 
@@ -962,7 +1008,7 @@ def grafica2(año, atributo_x, atributo_y, atributo_tamaño, atributo_color, esc
                       labels={atributo_x: f"{atributo_x} ({dict_unidades[atributo_x]})",
                               atributo_y: f"{atributo_y} ({dict_unidades[atributo_y]})",
                               atributo_color: f"{atributo_color} ({dict_unidades[atributo_color]})"},
-                      width=1400, height=500)
+                     )
     
     elif atributo_color == "None":
         fig2 = px.scatter(df_año, x=atributo_x, y=atributo_y, size=atributo_tamaño, 
@@ -971,7 +1017,7 @@ def grafica2(año, atributo_x, atributo_y, atributo_tamaño, atributo_color, esc
                       labels={atributo_x: f"{atributo_x} ({dict_unidades[atributo_x]})",
                               atributo_y: f"{atributo_y} ({dict_unidades[atributo_y]})",
                               "etiqueta_tamaño": f"{atributo_tamaño} ({dict_unidades[atributo_tamaño]})"},
-                      width=1400, height=500)
+                      )
     
     else: 
         fig2 = px.scatter(df_año, x=atributo_x, y=atributo_y, color=atributo_color, size=atributo_tamaño, 
@@ -981,14 +1027,14 @@ def grafica2(año, atributo_x, atributo_y, atributo_tamaño, atributo_color, esc
                               atributo_y: f"{atributo_y} ({dict_unidades[atributo_y]})",
                               atributo_color: f"{atributo_color} ({dict_unidades[atributo_color]})",
                               "etiqueta_tamaño": f"{atributo_tamaño} ({dict_unidades[atributo_tamaño]})"},
-                      width=1400, height=500)
+                      )
     
     #Añadir recta de regresión,  con etiquetas dinámicas adaptadas a cada caso
     if linea_reg:
         if escala == "log":
-            equation_text = f"y = 10^{intercept:.6f} * x^{slope:.6f}<br>R² = {r_value**2:.3f}, p = {p_value:.3g}"
+            equation_text = f"y = 10^{intercept:.6f} * x^{slope:.6f}<br>R<sup>2</sup> = {r_value**2:.3f}, p = {p_value:.3g}"
         else:
-            equation_text = f"y = {slope:.6f}x + {intercept:.6f}<br>R² = {r_value**2:.3f}, p = {p_value:.3g}"
+            equation_text = f"y = {slope:.6f}x + {intercept:.6f}<br>R<sup>2</sup> = {r_value**2:.3f}, p = {p_value:.3g}"
     
     try:
         fig2.add_trace(go.Scatter(x=x_line, y=y_line, mode='lines', name='Recta de regresión', 
@@ -998,7 +1044,8 @@ def grafica2(año, atributo_x, atributo_y, atributo_tamaño, atributo_color, esc
     #Mejoras estéticas de la figura
     fig2.update_layout(
         plot_bgcolor="white",
-        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+        margin=dict(l=40, r=0, t=20, b=20)
     )
     
     #Configuración de ejes, incluida la escala escogida
@@ -1054,10 +1101,10 @@ def grafica1(atributo, countries, option):
     fig = px.line(
         df_countries, x="año", y=y_axis, color='país',
         labels={"año": "Año", y_axis: label_y},
-        title=title, width=1400, height=500
+        title=title, 
     )
     # Mejoras estéticas de la figura  
-    fig.update_layout(plot_bgcolor="white")
+    fig.update_layout(plot_bgcolor="white", margin=dict(l=40, r=0, t=30, b=20))
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGrey', range=[min_año, max_año])
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGrey')
 
