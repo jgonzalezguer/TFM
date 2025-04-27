@@ -173,341 +173,350 @@ df['continente'] = df['continente'].map(traducciones_continentes)
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # Inicialización del layout 
-app.layout = html.Div([
-    # Encabezado con logo, título y autor
+app.layout = dbc.Container([
+    # Encabezado con logo y título
     html.Div([
-        # Primera fila: logo + título
-        dbc.Row([
-            # Logo UOC (columna izquierda)
-            dbc.Col(html.Img(src="http://materials.cv.uoc.edu/cdocent/common/img/logo-uoc.png",
-                             alt="Logo UOC",
-                             style={'margin': '20px 0px 0px', 'maxWidth': '100%'}), width=2),
-            # Título principal (columna derecha)
-            dbc.Col(html.H1("Dashboard con visualizaciones interactivas para el análisis de la evolución del consumo energético global",
-                            style={'margin': '0px 0px 0px', 'fontSize': '40px','font-weight': 'bold','textAlign': 'center'}), width=9)
-        ], style={'color': '#002a77', 'fontSize': '20px', 'paddingBottom': '20px','maxWidth': '95%'}),
-        
-        # Segunda fila: asignatura y autor
-        dbc.Row([
-            dbc.Col(html.Div([
-            html.P(["  M2.882 - Trabajo Fin de Máster"],style={'margin': '0px 20px 0px'}),
-            html.P(["  Autor: Jonay González Guerra"],style={'margin': '0px 20px 0px'}),
-            ]), width=2),
-        ], style={'color': '#002a77', 'fontSize': '15px', 'padding': '0px','maxWidth': '95%'})
+    # Primera fila: logo + título
+    dbc.Row([
+        dbc.Col(html.Img(src="http://materials.cv.uoc.edu/cdocent/common/img/logo-uoc.png",
+                         alt="Logo UOC",
+                         style={'margin': '20px 0px 0px', 'maxWidth': '100%'}),
+                width=2),
+        dbc.Col(html.H1("Dashboard con visualizaciones interactivas para el análisis de la evolución del consumo energético global",
+                        style={'margin': '0px 0px 0px', 'fontSize': '40px', 'fontWeight': 'bold', 'textAlign': 'center'}),
+                width=10)
+    ], style={'color': '#002a77', 'fontSize': '20px', 'paddingBottom': '20px'}),
+
+    # Segunda fila: asignatura y autor
+    dbc.Row([
+        dbc.Col([
+            html.P("M2.882 - Trabajo Fin de Máster", style={'margin': '0px 20px 0px'}),
+            html.P("Autor: Jonay González Guerra", style={'margin': '0px 20px 0px'})
+        ], width=12)
+    ], style={'color': '#002a77', 'fontSize': '15px', 'padding': '0px'}),
     ],style={'backgroundColor': '#ADD8E6'}),
-    
-    html.Br(), # Separador visual
-    # Párrafo introductorio con enlace a la fuente de datos
-    html.P([
-        "El uso de la energía es un factor determinante en el desarrollo económico y en la sostenibilidad ambiental. A medida que los países buscan equilibrar crecimiento económico, \
-        eficiencia energética y reducción de emisiones de carbono, disponer de herramientas interactivas que faciliten el análisis de datos se vuelve cada vez más relevante. \
-        Este Trabajo Fin de Máster presenta un dashboard con visualizaciones interactivas que permite explorar la relación entre consumo energético a partir de distintas fuentes,  \
-        datos demográficos y económicos, así como de emisiones de gases de efecto invernadero en los distintos países del mundo a lo largo de las últimas décadas. \
-        Los datos empleados para la visualización han sido obtenidos de la web: ",
-        html.A("Energy-Our World in Data", href="https://ourworldindata.org/energy")
-    ],style={'maxWidth': '95%', 'margin': '0 auto', 'textAlign': 'justify'}), 
-    
     html.Br(),
-    
+
+    # Párrafo introductorio con enlace a la fuente de datos
+    dbc.Row([
+        dbc.Col(html.P([
+            "El uso de la energía es un factor determinante en el desarrollo económico y en la sostenibilidad ambiental. "
+            "A medida que los países buscan equilibrar crecimiento económico, eficiencia energética y reducción de emisiones "
+            "de carbono, disponer de herramientas interactivas que faciliten el análisis de datos se vuelve cada vez más relevante. "
+            "Este Trabajo Fin de Máster presenta un dashboard con visualizaciones interactivas que permite explorar la relación "
+            "entre consumo energético a partir de distintas fuentes, datos demográficos y económicos, así como de emisiones de "
+            "gases de efecto invernadero en los distintos países del mundo a lo largo de las últimas décadas. "
+            "Los datos empleados para la visualización han sido obtenidos de la web: ",
+            html.A("Energy-Our World in Data", href="https://ourworldindata.org/energy")
+        ], style={'color': '#002a77','textAlign': 'justify'}), width=12)
+    ]),
+
+    html.Br(),
+
     # Sección: Distribución mundial
-    
     html.Div([
-        # Botón para desplegar/plegar la sección interactiva
-        html.Button([html.Div("Distribución mundial", style={'flex': 1, 'textAlign': 'left'}), html.Span(" ▼", style={'font-size': '24px', 'margin-left': 'auto'})  ], id="toggle-geo", n_clicks=0, 
-        style={'font-size': '20px','width': '100%','height': '80px','textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77','border': 'none', 'outline': 'none','display': 'flex',  'alignItems': 'center'}),
-        # Almacén local para guardar el estado de visibilidad del contenido (por defecto oculto)
+        html.Button([
+            html.Div("Distribución mundial", style={'flex': 1, 'textAlign': 'left'}),
+            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
+        ], id="toggle-geo", n_clicks=0,
+            style={'fontSize': '20px', 'width': '100%', 'height': '80px',
+                   'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
+                   'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
         dcc.Store(id="store-geo", data=False),
-        # Contenido oculto/visible según el estado del botón
-        html.Div([html.Br(),
-            # Texto explicativo de la sección
-            html.P('En este apartado puedes observar cómo se distribuye un atributo a tu elección a lo largo del mundo y para un año concreto. \
-            Para visualizar la distribución mundial de dicho atributo puedes escoger entre 3 tipos de gráficos:  Mapamundi, Treemap \
-            o un diagrama de barras. En el caso de optar por el diagrama de barras, podrás escoger un número de países a mostrar, los cuales aparecerán ordenados según el valor del atributo de manera descendiente.', 
-            style={'maxWidth': '97%', 'margin': '0 auto', 'textAlign': 'justify'}),
-            # Contenedor con los controles y el gráfico
-            html.Div([
-                # Columna izquierda: controles de usuario
-                html.Div([
-                html.Br(),  
-                # Selector de tipo de gráfico
-                dcc.RadioItems(
-                    id="radio-geo",
-                    options=[
-                        {'label': ' Mapamundi', 'value': 'world'},
-                        {'label': ' Treemap', 'value': 'treemap'},
-                        {'label': ' Diagrama de barras', 'value': 'barras'}
-                    ],
-                    value='world',
-                    labelStyle={'display': 'block', 'margin': '5px', 'color': '#002a77'}
-                ),
-                # Dropdown de atributo
-                html.P("Atributo:"),
-                dcc.Dropdown(id="dropdown-geo", options=atributos_num, value='población', clearable=False, style={'color': '#002a77'}),
-                html.P("Año:"),
-                # Slider de año
-                dcc.Slider(df.año.min(), df.año.max(), step=1, value=2010, marks=None, id='slider-geo', tooltip={"placement": "bottom", "always_visible": True}),
-                # Slider de número de países (solo para el caso de diagrama de barras)
-                html.Div([
-                html.P("Número de países a mostrar:"),
-                dcc.Slider(5, len(countries), step=1, value=20,marks=None, id='slider-top-n',tooltip={"placement": "bottom", "always_visible": True})
-                ], id="slider-container", style={'display': 'none'})
-            ], style={'width': '15%', 'padding': '20px'}),
-            # Columna derecha: gráfico
-            html.Div([
-                dcc.Graph(
+        html.Div([
+            html.Br(),
+            dbc.Row([
+                dbc.Col(html.P(
+                    "En este apartado puedes observar cómo se distribuye un atributo a tu elección a lo largo del mundo y para un año concreto. "
+                    "Para visualizar la distribución mundial de dicho atributo puedes escoger entre 3 tipos de gráficos: Mapamundi, Treemap o un diagrama de barras. "
+                    "En el caso de optar por el diagrama de barras, podrás escoger un número de países a mostrar, los cuales aparecerán ordenados según el valor del atributo de manera descendiente.",
+                    style={'textAlign': 'justify'}
+                ), width=12)
+            ]),
+            dbc.Row([
+                dbc.Col([
+                    html.Br(),
+                    dcc.RadioItems(
+                        id="radio-geo",
+                        options=[
+                            {'label': 'Mapamundi', 'value': 'world'},
+                            {'label': 'Treemap', 'value': 'treemap'},
+                            {'label': 'Diagrama de barras', 'value': 'barras'}
+                        ],
+                        value='world',
+                        labelStyle={'display': 'block', 'margin': '5px', 'color': '#002a77'}
+                    ),
+                    html.P("Atributo:"),
+                    dcc.Dropdown(id="dropdown-geo", options=atributos_num, value='población', clearable=False,
+                                 style={'color': '#002a77'}),
+                    html.P("Año:"),
+                    dcc.Slider(df.año.min(), df.año.max(), step=1, value=2010, marks=None, id='slider-geo',
+                               tooltip={"placement": "bottom", "always_visible": True}),
+                    html.Div([
+                        html.P("Número de países a mostrar:"),
+                        dcc.Slider(5, len(countries), step=1, value=20, marks=None, id='slider-top-n',
+                                   tooltip={"placement": "bottom", "always_visible": True})
+                    ], id="slider-container", style={'display': 'none'})
+                ], width=2, style={'padding': '20px'}),
+                dbc.Col(dcc.Graph(
                     id="graph-geo",
-                    style={"width": "100%", "height": "80vh","maxHeight": "800px","minHeight": "400px"},  
-                    config={"responsive": True}                 
-                ),
-            ], style={'width': '100%', 'padding': '0px', 'margin': '0 auto'})
-            ], style={'display': 'flex'}),
-        ],  id="geo-content", style={'display': 'block'}) 
+                    style={"width": "100%", "height": "80vh", "maxHeight": "800px", "minHeight": "400px"},
+                    config={"responsive": True}
+                ), width=10, style={'padding': '0px'})
+            ])
+        ], id="geo-content", style={'display': 'block'})
     ], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),
-    
+
     # Sección: Clustering
     html.Div([
-        # Botón para desplegar/plegar la sección interactiva
-        html.Button([html.Div("Clustering", style={'flex': 1, 'textAlign': 'left'}), html.Span(" ▼", style={'font-size': '24px', 'margin-left': 'auto'})  ], id="toggle-clusters", n_clicks=0, 
-        style={'font-size': '20px','width': '100%','height': '80px','textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77','border': 'none', 'outline': 'none','display': 'flex',  'alignItems': 'center'}),
-        # Almacén local para guardar el estado de visibilidad del contenido (por defecto oculto)
+        html.Button([
+            html.Div("Clustering", style={'flex': 1, 'textAlign': 'left'}),
+            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
+        ], id="toggle-clusters", n_clicks=0,
+            style={'fontSize': '20px', 'width': '100%', 'height': '80px',
+                   'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
+                   'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
         dcc.Store(id="store-clusters", data=False),
-        # Contenido oculto/visible según el estado del botón
-        html.Div([html.Br(),
-            # Texto explicativo de la sección
-            html.P(
-            "En este apartado los países se agrupan en clusters según los atributos seleccionados por el usuario mediante el algoritmo K-Means, "
-            "configurable en número de grupos, año de análisis y variables consideradas. "
-            "Si se seleccionan dos o más atributos se aplica una reducción de dimensiones con PCA y se muestra un gráfico de dispersión, "
-            "mientras que con un solo atributo se presenta un histograma con la distribución por grupo. "
-            "En ambos casos se incluye un mapa mundial donde cada país se colorea según el grupo al que pertenece.",
-            style={'maxWidth': '97%', 'margin': '0 auto', 'textAlign': 'justify'}),
-            # Contenedor con los controles y el gráfico de dispersión
-            html.Div([
-                # Columna izquierda: controles de usuario
-                html.Div([
-                html.Br(),  
-                # Dropdown de atributos
-                html.P("Atributos:"),
-                dcc.Dropdown(
+        html.Div([
+            html.Br(),
+            dbc.Row([
+                dbc.Col(html.P(
+                    "En este apartado los países se agrupan en clusters según los atributos seleccionados por el usuario mediante el algoritmo K-Means, "
+                    "configurable en número de grupos, año de análisis y variables consideradas. Si se seleccionan dos o más atributos se aplica una reducción "
+                    "de dimensiones con PCA y se muestra un gráfico de dispersión, mientras que con un solo atributo se presenta un histograma "
+                    "con la distribución por grupo. En ambos casos se incluye un mapa mundial donde cada país se colorea según el grupo al que pertenece.",
+                    style={'textAlign': 'justify','color': '#002a77'}
+                ), width=12)
+            ]),
+            dbc.Row([
+                dbc.Col([
+                    html.Br(),
+                    html.P("Atributos:"),
+                    dcc.Dropdown(
                         id="dropdown-atributos-cluster",
-                        options=[{"label": a, "value": a} for a in atributos_num],   
+                        options=[{"label": a, "value": a} for a in atributos_num],
                         multi=True,
-                        value= ["fósil_proporción_energía", "energía_per_capita", "GEI_per_capita"],                         
+                        value=["fósil_proporción_energía", "energía_per_capita", "GEI_per_capita"],
                         clearable=False,
                         style={'color': '#002a77'}
                     ),
-                # Slider de año
-                html.P("Año:"),
-                dcc.Slider(df.año.min(), df.año.max(), step=1, value=2010, marks=None, id='slider-año-clusters', tooltip={"placement": "bottom", "always_visible": True}),
-                # Slider con el número de clusters
-                html.P("Número de clusters:"),
-                dcc.Slider(1, 10, step=1, value=3,marks=None, id='slider-num-clusters',tooltip={"placement": "bottom", "always_visible": True}),
-            ], style={'width': '15%', 'padding': '20px'}),
-            # Columna derecha: gráfico de dispersión
-            html.Div([
-                dcc.Graph(id="graph-clusters-1", style={"width": "100%", "height": "100%"}),
-            ], style={'width': '85%', 'padding': '0px'})
-            ], style={'display': 'flex'}),
-            # Gráfico Mapamundi con clusters
-            html.Div([
-                dcc.Graph(
+                    html.P("Año:"),
+                    dcc.Slider(df.año.min(), df.año.max(), step=1, value=2010, marks=None, id='slider-año-clusters',
+                               tooltip={"placement": "bottom", "always_visible": True}),
+                    html.P("Número de clusters:"),
+                    dcc.Slider(1, 10, step=1, value=3, marks=None, id='slider-num-clusters',
+                               tooltip={"placement": "bottom", "always_visible": True})
+                ], width=2, style={'padding': '20px','color': '#002a77'}),
+                dbc.Col(dcc.Graph(
+                    id="graph-clusters-1",
+                    style={"width": "100%", "height": "100%"}
+                ), width=10, style={'padding': '0px'})
+            ]),
+            dbc.Row([
+                dbc.Col(dcc.Graph(
                     id="graph-clusters-2",
-                    style={"width": "100%", "height": "80vh","maxHeight": "800px","minHeight": "400px"},
+                    style={"width": "100%", "height": "80vh", "maxHeight": "800px", "minHeight": "400px"},
                     config={"responsive": True}
-                )
-            ], style={'width': '100%', 'padding': '0px', 'margin': '0 auto'})
-        ],  id="clusters-content", style={'display': 'block'}) 
+                ), width=12)
+            ], style={'padding': '0px', 'margin': '0 auto'})
+        ], id="clusters-content", style={'display': 'block'})
     ], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),
 
-   
     # Sección: Diagrama de dispersión
     html.Div([
-        # Botón para mostrar u ocultar el contenido de la sección
-        html.Button([html.Div("Diagrama de dispersión", style={'flex': 1, 'textAlign': 'left'}), 
-                 html.Span(" ▼", style={'font-size': '24px', 'margin-left': 'auto'})], 
-                id="toggle-dispersion", n_clicks=0, 
-                style={'font-size': '20px','width': '100%','height': '80px','textAlign': 'center', 
-                       'backgroundColor': '#ADD8E6', 'color': '#002a77','border': 'none', 
-                       'outline': 'none','display': 'flex',  'alignItems': 'center'}),
-        # Almacena el estado de visibilidad de la sección (por defecto oculto)
-        dcc.Store(id="store-dispersion", data=False),  
-        # Contenido que se despliega al hacer clic en el botón
-        html.Div([html.Br(),
-            # Descripción de la funcionalidad
-            html.P('En este apartado se muestra un diagrama de dispersión bidimensional para dos atributos y un año a tu elección, así como la recta de regresión lineal correspondiente con datos estadísticos relevantes. \
-            La visualización también permite escoger dos atributos adicionales que se observarán en el tamaño de los puntos y su color.', 
-            style={'maxWidth': '97%', 'margin': '0 auto', 'textAlign': 'justify'}),
-            # Contenedor general con controles y gráfico
-            html.Div([
-                # Columna izquierda: controles de usuario
-                html.Div([
-                html.Br(),
-                # Dropdowns de atributos
-                html.P("Atributo eje X:"),
-                dcc.Dropdown(id="dropdown21", options=atributos_num, value='pib per capita', clearable=False, style={'color': '#002a77'}),
-                
-                html.P("Atributo eje Y:"),
-                dcc.Dropdown(id="dropdown22", options=atributos_num, value='energía_per_capita', clearable=False, style={'color': '#002a77'}),
-                
-                html.P("Atributo tamaño:"),
-                dcc.Dropdown(id="dropdown23", options=atributos_num_None, value='None', clearable=False, style={'color': '#002a77'}),
-                
-                html.P("Atributo color:"),
-                dcc.Dropdown(id="dropdown24", options=atributos_num_None, value='None', clearable=False, style={'color': '#002a77'}),
-                
-                # Slider de año
-                html.P("Año:"),
-                dcc.Slider(df.año.min(), df.año.max(), step=1, value=2010, marks=None, id='my-slider2',
-                           tooltip={"placement": "bottom", "always_visible": True}),
-                
-                html.P("Escala de ejes:"),
-                dcc.RadioItems(
-                    id="scale-type",
-                    options=[
-                        {"label": "Escala real", "value": "linear"},
-                        {"label": "Escala logarítmica", "value": "log"}
-                    ],
-                    value="linear",
-                    labelStyle={'display': 'block', 'margin': '5px', 'color': '#002a77'}
-                ),
-                
-            ], style={'width': '15%', 'padding': '20px'}),
-            
-            # Columna derecha con el diagrama de dispersión
-            html.Div([
-                dcc.Graph(id="graph2", style={"width": "100%", "height": "100%"}),
-            ], style={'width': '85%', 'padding': '20px'})
-            
-        ], style={'display': 'flex'}), 
-        
-    ], id="dispersion-content", style={'display': 'block'}) 
-], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),
+        html.Button([
+            html.Div("Diagrama de dispersión", style={'flex': 1, 'textAlign': 'left'}),
+            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
+        ], id="toggle-dispersion", n_clicks=0,
+            style={'fontSize': '20px', 'width': '100%', 'height': '80px',
+                   'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
+                   'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
+        dcc.Store(id="store-dispersion", data=False),
+        html.Div([
+            html.Br(),
+            dbc.Row([
+                dbc.Col(html.P(
+                    "En este apartado se muestra un diagrama de dispersión bidimensional para dos atributos y un año a tu elección, así como la recta de regresión "
+                    "lineal correspondiente con datos estadísticos relevantes. La visualización también permite escoger dos atributos adicionales que "
+                    "se observarán en el tamaño de los puntos y su color.",
+                    style={'color': '#002a77','textAlign': 'justify'}
+                ), width=12)
+            ]),
+            dbc.Row([
+                dbc.Col([
+                    html.Br(),
+                    html.P("Atributo eje X:"),
+                    dcc.Dropdown(id="dropdown21", options=atributos_num, value='pib per capita', clearable=False, style={'color': '#002a77'}),
+                    html.P("Atributo eje Y:"),
+                    dcc.Dropdown(id="dropdown22", options=atributos_num, value='energía_per_capita', clearable=False, style={'color': '#002a77'}),
+                    html.P("Atributo tamaño:"),
+                    dcc.Dropdown(id="dropdown23", options=atributos_num_None, value='None', clearable=False, style={'color': '#002a77'}),
+                    html.P("Atributo color:"),
+                    dcc.Dropdown(id="dropdown24", options=atributos_num_None, value='None', clearable=False, style={'color': '#002a77'}),
+                    html.P("Año:"),
+                    dcc.Slider(df.año.min(), df.año.max(), step=1, value=2010, marks=None, id='my-slider2',
+                               tooltip={"placement": "bottom", "always_visible": True}),
+                    html.P("Escala de ejes:"),
+                    dcc.RadioItems(
+                        id="scale-type",
+                        options=[
+                            {"label": "Escala real", "value": "linear"},
+                            {"label": "Escala logarítmica", "value": "log"}
+                        ],
+                        value="linear",
+                        labelStyle={'display': 'block', 'margin': '5px', 'color': '#002a77'}
+                    )
+                ], width=2, style={'color': '#002a77','padding': '20px'}),
+                dbc.Col(dcc.Graph(
+                    id="graph2",
+                    style={"width": "100%", "height": "100%"}
+                ), width=10, style={'padding': '20px'})
+            ])
+        ], id="dispersion-content", style={'display': 'block'})
+    ], style={'color': '#002a77','border': 'none', 'padding': '10px', 'margin': '10px'}),
 
-    
-    
-    
     # Sección: Series temporales
     html.Div([
-        # Botón para mostrar/ocultar la sección
-        html.Button([html.Div("Series Temporales", style={'flex': 1, 'textAlign': 'left'}), html.Span(" ▼", style={'font-size': '24px', 'margin-left': 'auto'})  ], id="toggle-ts", n_clicks=0, 
-        style={'font-size': '20px','width': '100%','height': '80px','textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77','border': 'none', 'outline': 'none','display': 'flex',  'alignItems': 'center'}),
-        # Almacén del estado visible/oculto de la sección (por defecto oculto)
+        html.Button([
+            html.Div("Series Temporales", style={'flex': 1, 'textAlign': 'left'}),
+            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
+        ], id="toggle-ts", n_clicks=0,
+            style={'fontSize': '20px', 'width': '100%', 'height': '80px',
+                   'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
+                   'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
         dcc.Store(id="store-ts", data=False),
-        # Contenido que se despliega al hacer clic en el botón
-        html.Div([html.Br(),
-        html.P('En este apartado se puede observar las series temporales correspondientes a un atributo y una serie de países a elección del usuario. \
-        Puedes escoger entre visualizar el valor del atributo o su tasa de variación porcentual anual.', 
-        style={'maxWidth': '97%', 'margin': '0 auto', 'textAlign': 'justify'}),
-            # Contenedor con los controles y el gráfico
-            html.Div([
-                # Controles (columna izquierda)
-                html.Div([
+        html.Div([
+            html.Br(),
+            dbc.Row([
+                dbc.Col(html.P(
+                    "En este apartado se puede observar las series temporales correspondientes a un atributo y una serie de países a elección del usuario. "
+                    "Puedes escoger entre visualizar el valor del atributo o su tasa de variación porcentual anual.",
+                    style={'textAlign': 'justify'}
+                ), width=12)
+            ]),
+            dbc.Row([
+                dbc.Col([
                     html.Br(),
                     html.P("Atributo a mostrar:"),
-                    # Dropdown con el atributo a mostrar
                     dcc.Dropdown(id="dropdown11", options=atributos_num, value='población', clearable=False, style={'color': '#002a77'}),
                     html.P("Países o regiones:"),
-                    # Dropdown con los países a mostrar
                     dcc.Dropdown(
                         id="dropdown-countries",
-                        options=[{"label": c, "value": c} for c in countries],  
-                        value=['España'],  
-                        multi=True,  
+                        options=[{"label": c, "value": c} for c in countries],
+                        value=['España'],
+                        multi=True,
                         clearable=False,
                         style={'color': '#002a77'}
                     ),
                     html.Br(),
-                    # Selector del tipo de visualización (valor o tasa de variación anual)
                     dcc.RadioItems(
                         id="radio-ts",
                         options=[
-                            {'label': ' Atributo', 'value': 'ts'},
-                            {'label': ' Tasa de Variación Anual', 'value': 'rate'}
+                            {'label': 'Atributo', 'value': 'ts'},
+                            {'label': 'Tasa de Variación Anual', 'value': 'rate'}
                         ],
                         value='ts',
                         labelStyle={'display': 'block', 'margin': '5px', 'color': '#002a77'}
                     )
-                ], style={'width': '15%', 'padding': '20px'}),
-                # Gráfico (columna derecha)
-                html.Div([
-                    dcc.Graph(id="graph1", style={"width": "100%", "height": "100%"}),
-                ], style={'width': '85%', 'padding': '20px'})
-            ], style={'display': 'flex'}),
-          ],  id="ts-content", style={'display': 'block'})
-    ], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),
-
+                ], width=2, style={'padding': '20px'}),
+                dbc.Col(dcc.Graph(
+                    id="graph1",
+                    style={"width": "100%", "height": "100%"}
+                ), width=10, style={'padding': '20px'})
+            ])
+        ], id="ts-content", style={'display': 'block'})
+    ], style={'color': '#002a77','border': 'none', 'padding': '10px', 'margin': '10px'}),
 
     # Sección: Consultas SQL
     html.Div([
-    # Botón para mostrar/ocultar el contenido
-    html.Button([html.Div("Consultas SQL", style={'flex': 1, 'textAlign': 'left'}), html.Span(" ▼", style={'font-size': '24px', 'margin-left': 'auto'})  ], id="toggle-SQL", n_clicks=0, 
-        style={'font-size': '20px','width': '100%','height': '80px','textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77','border': 'none', 'outline': 'none','display': 'flex',  'alignItems': 'center'}),
-    # Almacenes del estado de visibilidad (inicialmente oculto) y de los resultados de la consulta
-    dcc.Store(id="store-SQL", data=False),  dcc.Store(id="query-result-store", data={}),
-    # Contenido de la sección
-    html.Div([html.Br(),
-        # Instrucciones de uso
-        html.P('En este apartado puedes realizar consultas SQL sobre el conjunto de datos. Para ello ten en cuenta que el nombre de la tabla es "tabla".', 
-        style={'maxWidth': '97%', 'margin': '0 auto', 'textAlign': 'justify'}),
-        html.P('Ejemplo de consulta: ', 
-        style={'maxWidth': '97%', 'margin': '0 auto', 'textAlign': 'justify'}),
-        html.P('SELECT año, país, población, pib AS PIB, "pib per capita" AS "PIB per capita" FROM tabla WHERE país ="España" AND año BETWEEN 1980 AND 2022; ', 
-        style={'maxWidth': '97%', 'margin': '0 auto', 'textAlign': 'justify'}),
-        html.P('Puedes descargar los resultados de la consulta en formato CSV si lo deseas.', 
-        style={'maxWidth': '97%', 'margin': '0 auto', 'textAlign': 'justify'}),
-        # Área de entrada de la consulta y botones
+        html.Button([
+            html.Div("Consultas SQL", style={'flex': 1, 'textAlign': 'left'}),
+            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
+        ], id="toggle-SQL", n_clicks=0,
+            style={'fontSize': '20px', 'width': '100%', 'height': '80px',
+                   'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
+                   'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
+        dcc.Store(id="store-SQL", data=False),
+        dcc.Store(id="query-result-store", data={}),
         html.Div([
-            html.H4("Escribe tu consulta SQL a continuación:"),
-            # Entrada de texto para escribir la consulta
-            dcc.Textarea(id='sql-input', style={'width': '100%', 'height': '100px', 'font-family': 'monospace'}),
-            # Botones para ejecutar y descargar
-            html.Button('Ejecutar consulta', id='execute-query', n_clicks=0),
-            html.Button("Descargar CSV", id="download-csv", n_clicks=0, style={'margin-left': '10px'}),
-            dcc.Download(id="download-link"),
-            # Resultados de la consulta
-            html.Div(id='query-results', style={'marginTop': '20px'})
-        ], style={'padding': '20px'}),
-    ],  id="SQL-content", style={'display': 'block'})  # Inicialmente visible
-    ], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),
-    
+            html.Br(),
+            dbc.Row([
+                dbc.Col(html.P(
+                    'En este apartado puedes realizar consultas SQL sobre el conjunto de datos. Para ello ten en cuenta que el nombre de la tabla es "tabla".',
+                    style={'textAlign': 'justify'}
+                ), width=12)
+            ]),
+            dbc.Row([
+                dbc.Col(html.P('Ejemplo de consulta:', style={'textAlign': 'justify'}), width=12)
+            ]),
+            dbc.Row([
+                dbc.Col(html.P(
+                    """SELECT año, país, población, pib AS PIB, "pib per capita" AS "PIB per capita" FROM tabla WHERE país = "España" AND año BETWEEN 1980 AND 2022;""",
+                    style={'textAlign': 'justify'}
+                ), width=12)
+            ]),
+            dbc.Row([
+                dbc.Col(html.P(
+                    'Puedes descargar los resultados de la consulta en formato CSV si lo deseas.',
+                    style={'textAlign': 'justify'}
+                ), width=12)
+            ]),
+            dbc.Row([
+                dbc.Col(html.Div([
+                    html.H4("Escribe tu consulta SQL a continuación:"),
+                    dcc.Textarea(id='sql-input', style={'width': '100%', 'height': '100px', 'fontFamily': 'monospace'}),
+                    html.Button('Ejecutar consulta', id='execute-query', n_clicks=0),
+                    html.Button("Descargar CSV", id="download-csv", n_clicks=0, style={'marginLeft': '10px'}),
+                    dcc.Download(id="download-link"),
+                    html.Div(id='query-results', style={'marginTop': '20px'})
+                ], style={'padding': '20px'}), width=12)
+            ])
+        ], id="SQL-content", style={'display': 'block'})
+    ], style={'color': '#002a77','border': 'none', 'padding': '10px', 'margin': '10px'}),
+
     # Sección: Metadatos
     html.Div([
-    # Botón para mostrar/ocultar la sección (inicialmente oculto)
-    html.Button([html.Div("Metadatos", style={'flex': 1, 'textAlign': 'left'}), html.Span(" ▼", style={'font-size': '24px', 'margin-left': 'auto'})  ], id="toggle-meta", n_clicks=0, 
-        style={'font-size': '20px','width': '100%','height': '80px','textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77','border': 'none', 'outline': 'none','display': 'flex',  'alignItems': 'center'}),
-    # Almacén para controlar la visibilidad de la sección (inicialmente oculto)   
-    dcc.Store(id="store-meta", data=False),  
-    # Contenido desplegable 
-    html.Div([
+        html.Button([
+            html.Div("Metadatos", style={'flex': 1, 'textAlign': 'left'}),
+            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
+        ], id="toggle-meta", n_clicks=0,
+            style={'fontSize': '20px', 'width': '100%', 'height': '80px',
+                   'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
+                   'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
+        dcc.Store(id="store-meta", data=False),
         html.Div([
-            # Descripción introductoria del contenido
-            html.P('A continuación se muestra una tabla con la descripción de cada uno de los atributos representables en el dashboard, las unidades correspondientes y las fuentes de donde han sido obtenidos los datos:', 
-        style={'maxWidth': '97%', 'margin': '0 auto', 'textAlign': 'justify'}),
-            # Aquí se mostrará dinámicamente la tabla con los metadatos
-            html.Div(id='meta-results', style={'marginTop': '20px'})
-        ], style={'padding': '20px'}),
-    ],  id="meta-content", style={'display': 'block'})  # Inicialmente visible
-    ], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),    
-    
+            html.Br(),
+            dbc.Row([
+                dbc.Col(html.P(
+                    'A continuación se muestra una tabla con la descripción de cada uno de los atributos representables en el dashboard, '
+                    'las unidades correspondientes y las fuentes de donde han sido obtenidos los datos:',
+                    style={'textAlign': 'justify'}
+                ), width=12)
+            ]),
+            dbc.Row([
+                dbc.Col(html.Div(id='meta-results', style={'marginTop': '20px'}), width=12)
+            ])
+        ], id="meta-content", style={'display': 'block'})
+    ], style={'color': '#002a77','border': 'none', 'padding': '10px', 'margin': '10px'}),
 
     html.Br(),
+
     # Pie de página (footer) con el logo de la UOC
-    html.Div(style={'background': '#002a77', 'padding': '35px 0px', 'marginTop': '25px','height':'140px'}, children=[
-        html.Div(className='row', children=[
-            html.Div(className='col-sm-12', children=[
-                html.Img(src="http://materials.cv.uoc.edu/cdocent/common/img/logo-uoc-bottom.png",
+    dbc.Row(
+        dbc.Col(html.Img(src="http://materials.cv.uoc.edu/cdocent/common/img/logo-uoc-bottom.png",
                          alt="Logo UOC",
-                         style={'margin': '0 auto', 'display': 'block', 'maxWidth': '95%'})
-            ])
-        ])
-    ])
-            
-    
-    ],  style={'color': '#002a77', 'maxWidth': '2000px', 'margin': '0 auto', 'overflowX': 'hidden'})
-    
-    
-    
-  
+                         style={'margin': '0 auto', 'display': 'block', 'maxWidth': '95%'}),
+                width=12),
+        style={'backgroundColor': '#002a77', 'padding': '35px 0px', 'marginTop': '25px', 'height': '140px'}
+    )
+
+], fluid=True, style={'width': '100%', 'margin': '0 auto'})
+
+
+
+
+
+
 # CALLBACKS Y FUNCIONES CON GRÁFICOS Y CONSOLA SQL
 
 # Callback para mostrar u ocultar la sección "Distribución mundial" al hacer clic en el botón
