@@ -170,10 +170,10 @@ df['continente'] = df['continente'].map(traducciones_continentes)
 # DEFINICIÓN DE LA ESTRUCTURA HTML DEL DASHBOARD 
 
 # Inicialización de la aplicación Dash con hoja de estilo externa de Bootstrap
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])   #Estilo BOOTSTRAP: https://dash-bootstrap-components.opensource.faculty.ai/docs/themes/
 
 # Inicialización del layout 
-app.layout = dbc.Container([
+app.layout = dbc.Container([  #sistema de rejilla de Bootstrap
     # Encabezado con logo y título
     html.Div([
     # Primera fila: logo + título
@@ -185,14 +185,14 @@ app.layout = dbc.Container([
         dbc.Col(html.H1("Dashboard con visualizaciones interactivas para el análisis de la evolución del consumo energético global",
                         style={'margin': '0px 0px 0px', 'fontSize': '40px', 'fontWeight': 'bold', 'textAlign': 'center'}),
                 width=10)
-    ], style={'color': '#002a77', 'fontSize': '20px', 'paddingBottom': '20px'}),
+    ], style={'color': '#002a77',  'paddingBottom': '20px'}),
 
     # Segunda fila: asignatura y autor
     dbc.Row([
         dbc.Col([
             html.P("M2.882 - Trabajo Fin de Máster", style={'margin': '0px 20px 0px'}),
             html.P("Autor: Jonay González Guerra", style={'margin': '0px 20px 0px'})
-        ], width=12)
+        ], width=12)  # 12 es el ancho máximo de columnas en Dash Bootstrap Components
     ], style={'color': '#002a77', 'fontSize': '15px', 'padding': '0px'}),
     ],style={'backgroundColor': '#ADD8E6'}),
     html.Br(),
@@ -211,26 +211,25 @@ app.layout = dbc.Container([
         ], style={'color': '#002a77','textAlign': 'justify'}), width=12)
     ]),
 
-    html.Br(),
+    #html.Br(),
 
     # Sección: Distribución mundial
     html.Div([
         html.Button([
-            html.Div("Distribución mundial", style={'flex': 1, 'textAlign': 'left'}),
-            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
-        ], id="toggle-geo", n_clicks=0,
+            html.Div("Distribución mundial", style={'flex': 1, 'textAlign': 'left'}), # 'flex: 1' hace que este div crezca proporcionalmente dentro de un contenedor con display: flex.  útil para distribuir elementos horizontalmente de forma equilibrada
+            html.Span(" \u25BC", style={'fontSize': '24px', 'marginLeft': 'auto'})  #flecha hacia abajo a la derecha del Button
+        ], id="toggle-geo", n_clicks=0, # n_clicks=0 propiedad numérica del html.Button  toggle-geo que inicializa el contador de clics del botón (para callbacks). 
             style={'fontSize': '20px', 'width': '100%', 'height': '80px',
                    'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
                    'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
-        dcc.Store(id="store-geo", data=False),
-        html.Div([
+        html.Div([  #División con el contenido del bloque a mostrar u ocultar
             html.Br(),
             dbc.Row([
                 dbc.Col(html.P(
                     "En este apartado puedes observar cómo se distribuye un atributo a tu elección a lo largo del mundo y para un año concreto. "
                     "Para visualizar la distribución mundial de dicho atributo puedes escoger entre 3 tipos de gráficos: Mapamundi, Treemap o un diagrama de barras. "
                     "En el caso de optar por el diagrama de barras, podrás escoger un número de países a mostrar, los cuales aparecerán ordenados según el valor del atributo de manera descendiente.",
-                    style={'textAlign': 'justify'}
+                    style={'textAlign': 'justify','color': '#002a77' }
                 ), width=12)
             ]),
             dbc.Row([
@@ -245,38 +244,37 @@ app.layout = dbc.Container([
                         ],
                         value='world',
                         labelStyle={'display': 'block', 'margin': '5px', 'color': '#002a77'}
-                    ),
+                    ),  #Botones de opciones mutuamente excluyentes para seleccionar un tipo de gráfico. Por defecto se muestra Mapamundi.
                     html.P("Atributo:"),
                     dcc.Dropdown(id="dropdown-geo", options=atributos_num, value='población', clearable=False,
-                                 style={'color': '#002a77'}),
+                                 style={'color': '#002a77'}), #Dropdown para escoger el atributo numérico a mostrar en los gráficos de la sección.
                     html.P("Año:"),
                     dcc.Slider(df.año.min(), df.año.max(), step=1, value=2010, marks=None, id='slider-geo',
-                               tooltip={"placement": "bottom", "always_visible": True}),
+                               tooltip={"placement": "bottom", "always_visible": True}),   #Deslizador para seleccionar año para el que visibilizar los gráficos de la sección.
                     html.Div([
                         html.P("Número de países a mostrar:"),
-                        dcc.Slider(5, len(countries), step=1, value=20, marks=None, id='slider-top-n',
-                                   tooltip={"placement": "bottom", "always_visible": True})
-                    ], id="slider-container", style={'display': 'none'})
-                ], width=2, style={'padding': '20px'}),
+                        dcc.Slider(5, 30, step=1, value=20, marks=None, id='slider-top-n',
+                                   tooltip={"placement": "bottom", "always_visible": True})  #Deslizador para seleccionar el número de países a mostrar en el diagrama de barras. 
+                    ], id="slider-container", style={'display': 'none'})  #El contenedor de este deslizador solo aparecerá si se selecciona el diagrama de barras. Gestionado mediante un callback.
+                ], width=2, style={'padding': '20px'}),  #Columna con controles estrecha a la izquierda. Relleno (espacio interior) de 20 píxeles 
                 dbc.Col(dcc.Graph(
                     id="graph-geo",
-                    style={"width": "100%", "height": "80vh", "maxHeight": "800px", "minHeight": "400px"},
-                    config={"responsive": True}
-                ), width=10, style={'padding': '0px'})
+                    style={"width": "100%", "height": "80vh", "maxHeight": "800px", "minHeight": "400px"},   # El gráfico ocupa el 100% del ancho y el 80% de la altura de la ventana (80vh), con una altura máxima de 800px y mínima de 400px.
+                    config={"responsive": True}   # Asegura que el gráfico se redimensione proporcionalmente según el tamaño disponible, manteniendo una apariencia adecuada en pantallas grandes y pequeñas.
+                ), width=10, style={'padding': '0px'})   #Columna con gráficos más ancha, a la derecha.
             ])
-        ], id="geo-content", style={'display': 'block'})
-    ], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),
+        ], id="geo-content", style={'display': 'none'})  #'display': 'none' para que el bloque esté inicialmente oculto
+    ], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),  # Espacio interno (padding) y externo (margin) de 10px, sin borde (border: 'none')
 
     # Sección: Clustering
     html.Div([
         html.Button([
             html.Div("Clustering", style={'flex': 1, 'textAlign': 'left'}),
-            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
+            html.Span(" \u25BC", style={'fontSize': '24px', 'marginLeft': 'auto'})
         ], id="toggle-clusters", n_clicks=0,
             style={'fontSize': '20px', 'width': '100%', 'height': '80px',
                    'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
                    'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
-        dcc.Store(id="store-clusters", data=False),
         html.Div([
             html.Br(),
             dbc.Row([
@@ -288,15 +286,15 @@ app.layout = dbc.Container([
                     style={'textAlign': 'justify','color': '#002a77'}
                 ), width=12)
             ]),
-            dbc.Row([
+            dbc.Row([  #Primera fila con controles en columna de la izquierda y gráfico de clusters diferenciados por color a la derecha, en un diagrama de dispersión en el plano de las 2 componentes principales, o bien un histograma si solo se elige un atributo
                 dbc.Col([
                     html.Br(),
                     html.P("Atributos:"),
                     dcc.Dropdown(
                         id="dropdown-atributos-cluster",
-                        options=[{"label": a, "value": a} for a in atributos_num],
-                        multi=True,
-                        value=["fósil_proporción_energía", "energía_per_capita", "GEI_per_capita"],
+                        options=[{"label": a, "value": a} for a in atributos_num],  #equivalente a options=atributos_num, pero así permite cambiar etiquetas y filtrar lista inicial.
+                        multi=True,  #dropdown con opciones múltiples.
+                        value=["fósil_proporción_energía", "energía_per_capita", "GEI_per_capita"], #opciones por defecto
                         clearable=False,
                         style={'color': '#002a77'}
                     ),
@@ -304,7 +302,7 @@ app.layout = dbc.Container([
                     dcc.Slider(df.año.min(), df.año.max(), step=1, value=2010, marks=None, id='slider-año-clusters',
                                tooltip={"placement": "bottom", "always_visible": True}),
                     html.P("Número de clusters:"),
-                    dcc.Slider(1, 10, step=1, value=3, marks=None, id='slider-num-clusters',
+                    dcc.Slider(1, 10, step=1, value=3, marks=None, id='slider-num-clusters',  #Deslizador para seleccionar entre 1 y 10 clusters.
                                tooltip={"placement": "bottom", "always_visible": True})
                 ], width=2, style={'padding': '20px','color': '#002a77'}),
                 dbc.Col(dcc.Graph(
@@ -312,26 +310,25 @@ app.layout = dbc.Container([
                     style={"width": "100%", "height": "100%"}
                 ), width=10, style={'padding': '0px'})
             ]),
-            dbc.Row([
+            dbc.Row([  #Segunda fila con Mapamundi con mismos colores de clusters, ocupa todo el ancho.
                 dbc.Col(dcc.Graph(
                     id="graph-clusters-2",
                     style={"width": "100%", "height": "80vh", "maxHeight": "800px", "minHeight": "400px"},
                     config={"responsive": True}
                 ), width=12)
             ], style={'padding': '0px', 'margin': '0 auto'})
-        ], id="clusters-content", style={'display': 'block'})
+        ], id="clusters-content", style={'display': 'none'})
     ], style={'border': 'none', 'padding': '10px', 'margin': '10px'}),
 
     # Sección: Diagrama de dispersión
     html.Div([
         html.Button([
             html.Div("Diagrama de dispersión", style={'flex': 1, 'textAlign': 'left'}),
-            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
+            html.Span(" \u25BC", style={'fontSize': '24px', 'marginLeft': 'auto'})
         ], id="toggle-dispersion", n_clicks=0,
             style={'fontSize': '20px', 'width': '100%', 'height': '80px',
                    'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
                    'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
-        dcc.Store(id="store-dispersion", data=False),
         html.Div([
             html.Br(),
             dbc.Row([
@@ -360,9 +357,9 @@ app.layout = dbc.Container([
                     dcc.RadioItems(
                         id="scale-type",
                         options=[
-                            {"label": "Escala real", "value": "linear"},
+                            {"label": "Escala lineal", "value": "linear"},
                             {"label": "Escala logarítmica", "value": "log"}
-                        ],
+                        ], #Botones de opciones mutuamente excluyentes para seleccionar escala.
                         value="linear",
                         labelStyle={'display': 'block', 'margin': '5px', 'color': '#002a77'}
                     )
@@ -372,19 +369,18 @@ app.layout = dbc.Container([
                     style={"width": "100%", "height": "100%"}
                 ), width=10, style={'padding': '20px'})
             ])
-        ], id="dispersion-content", style={'display': 'block'})
+        ], id="dispersion-content", style={'display': 'none'})
     ], style={'color': '#002a77','border': 'none', 'padding': '10px', 'margin': '10px'}),
 
     # Sección: Series temporales
     html.Div([
         html.Button([
             html.Div("Series Temporales", style={'flex': 1, 'textAlign': 'left'}),
-            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
+            html.Span(" \u25BC", style={'fontSize': '24px', 'marginLeft': 'auto'})
         ], id="toggle-ts", n_clicks=0,
             style={'fontSize': '20px', 'width': '100%', 'height': '80px',
                    'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
                    'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
-        dcc.Store(id="store-ts", data=False),
         html.Div([
             html.Br(),
             dbc.Row([
@@ -407,14 +403,14 @@ app.layout = dbc.Container([
                         multi=True,
                         clearable=False,
                         style={'color': '#002a77'}
-                    ),
+                    ),  #Desplegable de opciones múltiples para seleccionar países a mostrar en el gráfico de series temporales.
                     html.Br(),
                     dcc.RadioItems(
                         id="radio-ts",
                         options=[
                             {'label': 'Atributo', 'value': 'ts'},
                             {'label': 'Tasa de Variación Anual', 'value': 'rate'}
-                        ],
+                        ], #Botones de opciones mutuamente excluyentes para seleccionar tipo de representación.
                         value='ts',
                         labelStyle={'display': 'block', 'margin': '5px', 'color': '#002a77'}
                     )
@@ -424,20 +420,19 @@ app.layout = dbc.Container([
                     style={"width": "100%", "height": "100%"}
                 ), width=10, style={'padding': '20px'})
             ])
-        ], id="ts-content", style={'display': 'block'})
+        ], id="ts-content", style={'display': 'none'})
     ], style={'color': '#002a77','border': 'none', 'padding': '10px', 'margin': '10px'}),
 
     # Sección: Consultas SQL
     html.Div([
         html.Button([
             html.Div("Consultas SQL", style={'flex': 1, 'textAlign': 'left'}),
-            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
+            html.Span(" \u25BC", style={'fontSize': '24px', 'marginLeft': 'auto'})
         ], id="toggle-SQL", n_clicks=0,
             style={'fontSize': '20px', 'width': '100%', 'height': '80px',
                    'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
                    'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
-        dcc.Store(id="store-SQL", data=False),
-        dcc.Store(id="query-result-store", data={}),
+        dcc.Store(id="query-result-store", data={}),  # Estado que almacena los resultados de la consulta, para poderlos descargar si el usuario lo desea
         html.Div([
             html.Br(),
             dbc.Row([
@@ -464,21 +459,21 @@ app.layout = dbc.Container([
             dbc.Row([
                 dbc.Col(html.Div([
                     html.H4("Escribe tu consulta SQL a continuación:"),
-                    dcc.Textarea(id='sql-input', style={'width': '100%', 'height': '100px', 'fontFamily': 'monospace'}),
-                    html.Button('Ejecutar consulta', id='execute-query', n_clicks=0),
-                    html.Button("Descargar CSV", id="download-csv", n_clicks=0, style={'marginLeft': '10px'}),
-                    dcc.Download(id="download-link"),
-                    html.Div(id='query-results', style={'marginTop': '20px'})
+                    dcc.Textarea(id='sql-input', style={'width': '100%', 'height': '100px', 'fontFamily': 'monospace'}),   #Recuadro donde introducir la consulta SQL. 
+                    html.Button('Ejecutar consulta', id='execute-query', n_clicks=0),  #Botón para lanzar la consulta SQL
+                    html.Button("Descargar CSV", id="download-csv", n_clicks=0, style={'marginLeft': '10px'}),  #Botón para descargar la consulta, guardada en el estado "query-result-store", en formato CSV.
+                    dcc.Download(id="download-link"),  #Descarga los datos si el usuario ha pulsado en "Descargar CSV"
+                    html.Div(id='query-results', style={'marginTop': '20px'}) #Muestra los resultados del query
                 ], style={'padding': '20px'}), width=12)
             ])
-        ], id="SQL-content", style={'display': 'block'})
+        ], id="SQL-content", style={'display': 'none'})
     ], style={'color': '#002a77','border': 'none', 'padding': '10px', 'margin': '10px'}),
 
     # Sección: Metadatos
     html.Div([
         html.Button([
             html.Div("Metadatos", style={'flex': 1, 'textAlign': 'left'}),
-            html.Span(" ▼", style={'fontSize': '24px', 'marginLeft': 'auto'})
+            html.Span(" \u25BC", style={'fontSize': '24px', 'marginLeft': 'auto'})
         ], id="toggle-meta", n_clicks=0,
             style={'fontSize': '20px', 'width': '100%', 'height': '80px',
                    'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
@@ -494,9 +489,9 @@ app.layout = dbc.Container([
                 ), width=12)
             ]),
             dbc.Row([
-                dbc.Col(html.Div(id='meta-results', style={'marginTop': '20px'}), width=12)
+                dbc.Col(html.Div(id='meta-results', style={'marginTop': '20px'}), width=12)   #Muestra la tabla de Metadatos de la misma forma que se mostraban los resultados del query en la sección de "Consultas SQL"
             ])
-        ], id="meta-content", style={'display': 'block'})
+        ], id="meta-content", style={'display': 'none'})
     ], style={'color': '#002a77','border': 'none', 'padding': '10px', 'margin': '10px'}),
 
     html.Br(),
@@ -510,7 +505,7 @@ app.layout = dbc.Container([
         style={'backgroundColor': '#002a77', 'padding': '35px 0px', 'marginTop': '25px', 'height': '140px'}
     )
 
-], fluid=True, style={'width': '100%', 'margin': '0 auto'})
+], fluid=True, style={'width': '100%', 'margin': '0 auto'})   #El parámetro fluid=True en dbc.Container hace que el contenedor se ajuste automáticamente al 100% del ancho de la pantalla disponible, haciéndolo responsive.
 
 
 
@@ -522,18 +517,16 @@ app.layout = dbc.Container([
 # Callback para mostrar u ocultar la sección "Distribución mundial" al hacer clic en el botón
 @app.callback(
     Output("geo-content", "style"), # Cambia el estilo (visible/oculto) del contenido
-    Output("store-geo", "data"),    # Actualiza el valor almacenado en el Store (True/False)
     Input("toggle-geo", "n_clicks"),# Entrada: número de clics en el botón 
-    Input("store-geo", "data")      # Entrada: valor actual de visibilidad (True o False)
 )
-def toggle_geo(n_clicks, is_visible):
+def toggle_geo(n_clicks):
     n_clicks = n_clicks or 0  # Si aún no se ha hecho clic, se considera 0
     if n_clicks % 2 == 1:  # Si el número de clics es impar --> mostrar contenido
-        return {'display': 'block'}, True  
-    return {'display': 'none'}, False # Si es par -->ocultar contenido
+        return {'display': 'block'} 
+    return {'display': 'none'}  # Si es par -->ocultar contenido
     
 # Callback que genera la figura de distribución mundial (mapamundi, treemap o barras)
-# según el tipo de visualización, el atributo seleccionado, el año y el número de países a mostrar (si aplica)
+# según el tipo de visualización, el atributo seleccionado, el año y el número de países a mostrar (en el diagrama de barras)
 
 @app.callback(
     Output("graph-geo", "figure"), # Salida: gráfico que se muestra en la sección
@@ -609,8 +602,8 @@ def actualizar_geo(vista, atributo, año, num_paises):
     elif vista == 'treemap':
         # Verificar si el atributo es adecuado para un treemap (magnitud absoluta y positiva)
         if atributo in atributos_num_absolutos:
+            df_año = df[df.año == año].copy()  #filtar los datos para el año de interés
             # Aplicar lógica histórica: URSS hasta 1991, repúblicas ex-soviéticas desde 1991
-            df_año = df[df.año == año].copy()
             if año <= 1991:
                 df_año = df_año[~(df_año['iso_code'].isin(ex_soviet_iso) & (df_año['país'] != 'URSS'))]
                 df_año.loc[df_año['país'] == 'URSS', 'continente'] = 'Europa'
@@ -633,14 +626,14 @@ def actualizar_geo(vista, atributo, año, num_paises):
                 for value, label in zip(trace.values, trace.labels):
                     percent = (value / total_mundial) * 100 if total_mundial > 0 else None
                     customdata.append([percent])
-                    text_values.append(f"{label}<br>{value:,.2f} {dict_unidades[atributo]}<br>{percent:.2f}%")
+                    text_values.append(f"{label}<br>{value:,.2f} {dict_unidades[atributo]}<br>{percent:.2f}%")  #<br> para salto de línea
                 trace.customdata = np.array(customdata)
                 trace.text = text_values  
-                trace.texttemplate = "%{text}"  
+                trace.texttemplate = "%{text}"    # Muestra el contenido personalizado de 'trace.text' directamente en las celdas del treemap
             # Tooltip personalizado y color raíz
             fig.update_traces(
                 root_color='#ADD8E6',
-                hovertemplate='<b>%{label}</b><br>' + atributo + f' ({dict_unidades[atributo]}): ' + '%{value} <br>' + 'Porcentaje: %{customdata[0]:.2f}%<extra></extra>'
+                hovertemplate='<b>%{label}</b><br>' + atributo + f' ({dict_unidades[atributo]}): ' + '%{value} <br>' + 'Porcentaje: %{customdata[0]:.2f}%<extra></extra>' #<extra></extra> oculta el rastro por defecto que Plotly añade al final del tooltip https://plotly.com/python/hover-text-and-formatting/
             )
             fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
             return fig
@@ -713,15 +706,13 @@ def toggle_slider(selected_graph):
 # Callback para mostrar u ocultar la sección "Clustering" al hacer clic en el botón
 @app.callback(
     Output("clusters-content", "style"), # Cambia el estilo (visible/oculto) del contenido
-    Output("store-clusters", "data"),    # Actualiza el valor almacenado en el Store (True/False)
     Input("toggle-clusters", "n_clicks"),# Entrada: número de clics en el botón 
-    Input("store-clusters", "data")      # Entrada: valor actual de visibilidad (True o False)
 )
-def toggle_clusters(n_clicks, is_visible):
+def toggle_clusters(n_clicks):
     n_clicks = n_clicks or 0  # Si aún no se ha hecho clic, se considera 0
     if n_clicks % 2 == 1:  # Si el número de clics es impar --> mostrar contenido
-        return {'display': 'block'}, True  
-    return {'display': 'none'}, False # Si es par -->ocultar contenido
+        return {'display': 'block'}
+    return {'display': 'none'} # Si es par -->ocultar contenido
     
 # Callback que solo deja seleccionar 4 atributos como máximo
 @app.callback(
@@ -747,7 +738,7 @@ def actualizar_clusters(atributos, año, num_clusters):
     atributos = list(atributos)
 
     df_año = df[df.año == año].copy()
-    df_cluster = df_año[["país", "año", "iso_code"] + atributos].dropna()
+    df_cluster = df_año[["país", "año", "iso_code"] + atributos].dropna() #Filtro de las columnas a utilizar en esta sección
     
     # Si no hay datos suficientes para clustering para los atributos y año escogidos, o si no hay atributos seleccionados, se asigna "Sin datos"
     if df_cluster.empty or len(df_cluster) < num_clusters or len(atributos)==0 :
@@ -796,7 +787,7 @@ def actualizar_clusters(atributos, año, num_clusters):
     kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
     df_cluster["cluster"] = kmeans.fit_predict(X_scaled).astype(str)
     
-    # Generar colores dinámicos para los clusters presentes, se usan mismos colores en ambas gráficas
+    # Generar diccionario de colores para los clusters presentes, se usan mismos colores en ambas gráficas
     clusters_unicos = sorted(df_cluster["cluster"].unique())
     paleta_base = [
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
@@ -937,15 +928,13 @@ def actualizar_clusters(atributos, año, num_clusters):
 
 @app.callback(
     Output("dispersion-content", "style"),   # Cambia el estilo (visible/oculto) del contenido
-    Output("store-dispersion", "data"),      # Actualiza el valor almacenado en el Store (True/False)
     Input("toggle-dispersion", "n_clicks"),  # Entrada: número de clics en el botón 
-    Input("store-dispersion", "data")        # Entrada: valor actual de visibilidad (True o False)
 )
-def toggle_dispersion(n_clicks, is_visible):
+def toggle_dispersion(n_clicks):
     n_clicks = n_clicks or 0  # Si aún no se ha hecho clic, se considera 0
     if n_clicks % 2 == 1:  # Si el número de clics es impar --> mostrar contenido
-        return {'display': 'block'}, True  
-    return {'display': 'none'}, False # Si es par -->ocultar contenido
+        return {'display': 'block'}
+    return {'display': 'none'} # Si es par -->ocultar contenido
 
 # Callback que actualiza el gráfico de dispersión (graph2) en función del año,
 # los atributos seleccionados para X, Y, tamaño, color y la escala de los ejes 
@@ -1001,7 +990,7 @@ def grafica2(año, atributo_x, atributo_y, atributo_tamaño, atributo_color, esc
 
         linea_reg = True
     except:
-        linea_reg = False
+        linea_reg = False  
 
     # Diagrama de dispersión con plotly-express scatter. Selección de configuración según atributos opcionales
     if atributo_tamaño == "None" and atributo_color == "None":
@@ -1038,7 +1027,7 @@ def grafica2(año, atributo_x, atributo_y, atributo_tamaño, atributo_color, esc
                               "etiqueta_tamaño": f"{atributo_tamaño} ({dict_unidades[atributo_tamaño]})"},
                       )
     
-    #Añadir recta de regresión,  con etiquetas dinámicas adaptadas a cada caso
+    #Añadir recta de regresión,  con etiquetas dinámicas adaptadas a cada escala
     if linea_reg:
         if escala == "log":
             equation_text = f"y = 10^{intercept:.6f} * x^{slope:.6f}<br>R<sup>2</sup> = {r_value**2:.3f}, p = {p_value:.3g}"
@@ -1070,15 +1059,13 @@ def grafica2(año, atributo_x, atributo_y, atributo_tamaño, atributo_color, esc
 
 @app.callback(
     Output("ts-content", "style"),   # Cambia el estilo (visible/oculto) del contenido
-    Output("store-ts", "data"),      # Actualiza el valor almacenado en el Store (True/False)
     Input("toggle-ts", "n_clicks"),  # Entrada: número de clics en el botón 
-    Input("store-ts", "data")        # Entrada: valor actual de visibilidad (True o False)
 )
-def toggle_ts(n_clicks, is_visible):
+def toggle_ts(n_clicks):
     n_clicks = n_clicks or 0  # Si aún no se ha hecho clic, se considera 0
     if n_clicks % 2 == 1:  # Si el número de clics es impar --> mostrar contenido
-        return {'display': 'block'}, True  
-    return {'display': 'none'}, False # Si es par -->ocultar contenido   
+        return {'display': 'block'} 
+    return {'display': 'none'} # Si es par -->ocultar contenido   
     
 # Callback para generar la figura de la serie temporal o tasa de variación según lo seleccionado
 @app.callback(
@@ -1102,10 +1089,7 @@ def grafica1(atributo, countries, option):
         y_axis = atributo
         title = f'Serie temporal de {atributo}'
         label_y = f'{atributo} ({dict_unidades[atributo]})'
-    # Cálculo del rango del eje X, ya que hay combinaciones de atributos y países con rangos diferentes
-    min_año = df_countries["año"].min()
-    max_año = df_countries["año"].max()
-    
+
     # Creación de la figura con Plotly-express line 
     fig = px.line(
         df_countries, x="año", y=y_axis, color='país',
@@ -1114,7 +1098,7 @@ def grafica1(atributo, countries, option):
     )
     # Mejoras estéticas de la figura  
     fig.update_layout(plot_bgcolor="white", margin=dict(l=40, r=0, t=30, b=20))
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGrey', range=[min_año, max_año])
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGrey')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGrey')
 
     return fig
@@ -1122,28 +1106,30 @@ def grafica1(atributo, countries, option):
 
 
 
-# Callback para mostrar u ocultar la sección "Consultas SQL" al hacer clic en el botón
-def run_sql(query_text, df, q):
-    try:
-        if not query_text.strip().lower().startswith("select"):
-            q.put(("error", "Solo se permiten consultas de lectura (instrucciones SELECT)."))
-            return
-        result = ps.sqldf(query_text, {"tabla": df})
-        q.put(("result", result))
-    except Exception as e:
-        q.put(("error", str(e)))
 
+# Callback para mostrar u ocultar la sección "Consultas SQL" al hacer clic en el botón
 @app.callback(
     Output("SQL-content", "style"),  # Cambia el estilo (visible/oculto) del contenido
-    Output("store-SQL", "data"),     # Actualiza el valor almacenado en el Store (True/False)
     Input("toggle-SQL", "n_clicks"), # Entrada: número de clics en el botón 
-    Input("store-SQL", "data")       # Entrada: valor actual de visibilidad (True o False)
 ) 
-def toggle_SQL(n_clicks, is_visible):
+def toggle_SQL(n_clicks):
     n_clicks = n_clicks or 0  # Si aún no se ha hecho clic, se considera 0
     if n_clicks % 2 == 1:  # Si el número de clics es impar --> mostrar contenido
-        return {'display': 'block'}, True  
-    return {'display': 'none'}, False # Si es par -->ocultar contenido    
+        return {'display': 'block'}
+    return {'display': 'none'} # Si es par -->ocultar contenido    
+    
+    
+# Función para realizar las consultas mediante pandas SQL y controlar que solo se permitan consultas de lectura (SELECT)
+def run_sql(query_text, df, q):
+    try:
+        if not query_text.strip().lower().startswith("select"):  #Si no empieza por "SELECT", se introduce en la cola de multiproceso el siguiente mensaje de error.
+            q.put(("error", "Solo se permiten consultas de lectura (instrucciones SELECT)."))
+            return
+        result = ps.sqldf(query_text, {"tabla": df})   #En caso contrario, realiza la consulta con pandas sql sobre el dataframe df (referido como tabla en la consulta) y se introduce el resultado de la consulta en la cola.
+        q.put(("result", result))
+    except Exception as e:
+        q.put(("error", str(e)))  #Si hay algún otro error, se introduce en la cola para mostrarlo en pantalla
+             
     
 # Callback que ejecuta la consulta SQL escrita por el usuario al hacer clic en el botón de "ejecutar consulta" ('execute-query')
 @app.callback(
@@ -1157,27 +1143,27 @@ def run_query(n_clicks, query):
         return "", {}
 
 
-    q = mp.Queue()
-    p = mp.Process(target=run_sql, args=(query, df, q))
-    p.start()
-    p.join(timeout=40)
+    q = mp.Queue()   #Se crea la cola de multiprocesos
+    p = mp.Process(target=run_sql, args=(query, df, q)) # Se lanza un proceso independiente (multiprocessing.Process) que ejecuta la consulta mediante la función run_sql
+    p.start()  
+    p.join(timeout=40)   #Se le da 40 segundos para resolver la consulta, en caso de que no de respuesta, se cancela la consulta para evitar que se cuelgue el sistema
 
-    if p.is_alive():
+    if p.is_alive():  #si tras 40 segundos la consulta sigue realizandose, se termina y  se muestra en pantalla un mensaje explicativo
         p.terminate()
         p.join()
         return html.Div([
             " La consulta SQL ha tardado demasiado tiempo y ha sido cancelada automáticamente (timeout de 40 segundos)."
         ], style={'color': 'red'}), {}
 
-    if not q.empty():
+    if not q.empty(): #si la cola no está vacía, se muestran los resultados de la consulta, ya sea la tabla con los resultados, o un error de consulta
         status, content = q.get()
         if status == "error":
             return html.Div([
                 " Error al ejecutar la consulta: ", content
             ], style={'color': 'red'}), {}
 
-        result = content
-        data_dict = result.to_dict('records')
+        result = content  #data frame con los resultados
+        data_dict = result.to_dict('records') #diccionario con los resultados 
         return html.Div([
             html.H4("Resultados de la consulta"),
             dash_table.DataTable(
@@ -1189,9 +1175,9 @@ def run_query(n_clicks, query):
                 page_size=10,
                 sort_action='native',
             )
-        ]), data_dict
+        ]), data_dict  #devuelve la tabla html y el diccionario con los resultados para poderlos descargar en formato csv (siguiente callback)
 
-    else:
+    else: #Si la cola está vacía, se muestra mensaje de error.
         return html.Div([
             " La consulta no pudo completarse (proceso sin respuesta)."
         ], style={'color': 'red'}), {}
@@ -1211,6 +1197,11 @@ def download_csv(n_clicks, query_data):
         df_result = pd.DataFrame(query_data)
         return dcc.send_data_frame(df_result.to_csv, "query_result.csv", index=False)   
     return dash.no_update # Si no hay datos, no se actualiza nada
+
+
+
+
+
 
 
 # Callback para mostrar u ocultar la sección "Metadatos" al hacer clic en el botón
@@ -1248,9 +1239,8 @@ def meta(is_visible):
         ])
 
 
-# Ejecuta la app con el servidor de desarrollo de Dash (debug desactivado), accesible desde cualquier IP en el puerto 7082 
+# Ejecuta la app con el servidor de desarrollo de Dash (debug desactivado), accesible desde cualquier IP en el puerto 7082.  La IP pública está configurada desde AWS para permitir el acceso externo.
 if __name__ == '__main__': app.run_server(debug=False, host='0.0.0.0', port=7082)
-                                        
                                         
 
 
