@@ -61,7 +61,6 @@ df["GEI_per_capita"] = df["efecto_invernadero_gas_emisiones"] / df["población"]
 df["GEI_per_capita"] = df["GEI_per_capita"].round(2)
 
 # Adición de metadatos para las nuevas variables
-
 nueva_fila_pib_pc = pd.DataFrame({
     "columna": ["pib per capita"],
     "descripción": ["PIB per cápita - Producto Interno Bruto dividido entre la población"],
@@ -307,7 +306,7 @@ app.layout = dbc.Container([  #sistema de rejilla de Bootstrap
                 ], width=2, style={'padding': '20px','color': '#002a77'}),
                 dbc.Col(dcc.Graph(
                     id="graph-clusters-1",
-                    style={"width": "100%", "height": "100%"}
+                    style={"width": "100%", "height": "100%"}, config={"responsive": True}
                 ), width=10, style={'padding': '0px'})
             ]),
             dbc.Row([  #Segunda fila con Mapamundi con mismos colores de clusters, ocupa todo el ancho.
@@ -664,9 +663,9 @@ def actualizar_geo(vista, atributo, año, num_paises):
         elif año > 1991:
             df_año = df_año[df_año['país'] != 'URSS']
         df_año = df_año.dropna(subset=['continente'])
-        df_top = df_año.nlargest(num_paises, atributo)  # se seleccionan los N mayores
+        df_top = df_año.nlargest(num_paises, atributo)  # se seleccionan los N mayores, los devuelve ordenados de mayor a menor
         df_top["rank"] = range(1, len(df_top) + 1)  # Se crea una nueva columna con el número en el ranking
-        df_top = df_top.sort_values(atributo, ascending=False)  # Se ordenan los valores del atributo de mayor a menor
+    
         # Creación de la figura con Plotly-express bar    
         fig = px.bar(
             df_top, 
