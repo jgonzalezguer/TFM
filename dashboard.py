@@ -810,7 +810,7 @@ def actualizar_clusters(atributos, año, num_clusters):
             color="cluster",
             color_discrete_map=colores,  
             hover_name="país",
-            hover_data={"año": True, **{col: True for col in atributos}},
+            hover_data={"año": True, **{col: True for col in atributos}},  ## ** para desempaquetar un diccionario dentro del otro
             title=f"Clustering de países para el año {año} (PCA)",
             labels={
                 **{col: f"{col} ({dict_unidades[col]})" for col in atributos if col in dict_unidades},
@@ -1121,9 +1121,9 @@ def toggle_SQL(n_clicks):
 # Función para realizar las consultas mediante pandas SQL y controlar que solo se permitan consultas de lectura (SELECT)
 def run_sql(query_text, df, q):
     try:
-        if not query_text.strip().lower().startswith("select"):  #Si no empieza por "SELECT", se introduce en la cola de multiproceso el siguiente mensaje de error.
+        if not query_text.strip().lower().startswith("select"):  #Si no empieza por "SELECT", se introduce en la cola de multiproceso el siguiente mensaje de error y se termina la ejecución de la función (return)
             q.put(("error", "Solo se permiten consultas de lectura (instrucciones SELECT)."))
-            return
+            return  
         result = ps.sqldf(query_text, {"tabla": df})   #En caso contrario, realiza la consulta con pandas sql sobre el dataframe df (referido como tabla en la consulta) y se introduce el resultado de la consulta en la cola.
         q.put(("result", result))
     except Exception as e:
@@ -1133,7 +1133,7 @@ def run_sql(query_text, df, q):
 # Callback que ejecuta la consulta SQL escrita por el usuario al hacer clic en el botón de "ejecutar consulta" ('execute-query')
 @app.callback(
     Output('query-results', 'children'),   # Salida donde se mostrará la tabla de resultados o los mensajes de error
-    Output('query-result-store', 'data'),  # Guarda los resultados en formato diccionario de Python para poderlos descargar si así lo desea el usuario(ver siguiente callback)
+    Output('query-result-store', 'data'),  # Guarda los resultados en formato lista de diccionarios de Python para poderlos descargar si así lo desea el usuario(ver siguiente callback)
     Input('execute-query', 'n_clicks'),    # Clic en el botón para ejecutar la consulta
     State('sql-input', 'value')            # Consulta SQL escrita por el usuario (estado actual del input)
 )
@@ -1162,11 +1162,11 @@ def run_query(n_clicks, query):
             ], style={'color': 'red'}), {}
 
         result = content  #data frame con los resultados
-        data_dict = result.to_dict('records') #diccionario con los resultados 
+        data_dict = result.to_dict('records') #Lista de diccionarios con los resultados (cada diccionario corresponde a una fila).   ‘records’ : list like [{column -> value}, … , {column -> value}]   https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_dict.html
         return html.Div([
             html.H4("Resultados de la consulta"),
             dash_table.DataTable(
-                columns=[{"name": col, "id": col} for col in result.columns],
+                columns=[{"name": col, "id": col} for col in result.columns],  #tiene que ser una lista de diccionarios  con nombre e id https://dash.plotly.com/datatable
                 data=data_dict,
                 style_table={'overflowX': 'auto'},
                 style_header={'backgroundColor': 'lightgrey', 'fontWeight': 'bold'},
@@ -1174,7 +1174,7 @@ def run_query(n_clicks, query):
                 page_size=10,
                 sort_action='native',
             )
-        ]), data_dict  #devuelve la tabla html y el diccionario con los resultados para poderlos descargar en formato csv (siguiente callback)
+        ]), data_dict  #devuelve la tabla html y la lista de diccionarios con los resultados para poderlos descargar en formato csv (siguiente callback)
 
     else: #Si la cola está vacía, se muestra mensaje de error.
         return html.Div([
@@ -1183,18 +1183,18 @@ def run_query(n_clicks, query):
 
 
 
-# Callback que permite descargar en CSV los resultados de la consulta SQL ejecutada previamente(almacenados como diccionario en el output query-result-store del callback anterior).
+# Callback que permite descargar en CSV los resultados de la consulta SQL ejecutada previamente(almacenados como lista de diccionarios en el output query-result-store del callback anterior).
 @app.callback(
     Output("download-link", "data"),       # Devuelve los datos preparados para descarga
     Input("download-csv", "n_clicks"),     # Clic en el botón de descarga
     State("query-result-store", "data"),   # Estado: resultados almacenados de la consulta previa
     prevent_initial_call=True              # Evita que se dispare al cargar la app por primera vez
 )
-def download_csv(n_clicks, query_data):
+def download_csv(n_clicks, query_data):  
     if query_data:
-        # Se convierten los datos almacenados en un diccionario a un DataFrame para exportarlos como CSV usando el método .to_csv de Pandas
+        # Se convierten los datos almacenados en una lista de diccionarios a un DataFrame para exportarlos como CSV usando el método .to_csv de Pandas
         df_result = pd.DataFrame(query_data)
-        return dcc.send_data_frame(df_result.to_csv, "query_result.csv", index=False)   
+        return dcc.send_data_frame(df_result.to_csv, "query_result.csv", index=False)    #https://dash.plotly.com/dash-core-components/download
     return dash.no_update # Si no hay datos, no se actualiza nada
 
 
