@@ -40,7 +40,9 @@ pib_ue27 = df_ue27[df_ue27["año"] != 2023].groupby("año")["pib"].sum().reset_i
 # Añadir columna 'país' para fusionar con 'Unión Europea(27)'
 pib_ue27["país"] = "Unión Europea(27)"
 
-# Fusionar con el DataFrame original para actualizar el PIB
+# Fusiona df con pib_ue27 (PIB agregado de UE27 por año) usando un left join en 'país' y 'año'. 
+# 'pib_y' contiene el PIB de pib_ue27 para filas donde país="Unión Europea(27)" y años coincidentes, y NaN en el resto. 
+# combine_first prioriza los valores no nulos de pib_y (UE27) sobre los de df["pib"], actualizando el PIB de la UE27 mientras preserva los valores originales para otros países.
 df["pib"] = df.merge(pib_ue27, on=["país", "año"], how="left")["pib_y"].combine_first(df["pib"])
 
 # Asegurar que el PIB de "Unión Europea(27)" en 2023 sea NaN porque no hay datos en algunos de los 27 países
@@ -615,7 +617,7 @@ def actualizar_geo(vista, atributo, año, num_paises):
                 df_año, 
                 path=[px.Constant("Mundo"), 'continente', 'país'], 
                 values=atributo, 
-                labels={atributo: f"{atributo} ({dict_unidades[atributo]})"},
+                labels={atributo: f"{atributo} ({dict_unidades[atributo]})"},    #En la etiqueta emergente o tooltip, sustituye el nombre del atributo por: atributo (unidades).
                 title=f"Treemap de {atributo} ({dict_unidades[atributo]}) en el año {año}"
             )
             # Personalización de etiquetas y porcentaje sobre el total
@@ -631,8 +633,8 @@ def actualizar_geo(vista, atributo, año, num_paises):
                 trace.texttemplate = "%{text}"    # Muestra el contenido personalizado de 'trace.text' directamente en las celdas del treemap
             # Tooltip personalizado y color raíz
             fig.update_traces(
-                root_color='#ADD8E6',
-                hovertemplate='<b>%{label}</b><br>' + atributo + f' ({dict_unidades[atributo]}): ' + '%{value} <br>' + 'Porcentaje: %{customdata[0]:.2f}%<extra></extra>' #<extra></extra> oculta el rastro por defecto que Plotly añade al final del tooltip https://plotly.com/python/hover-text-and-formatting/
+                root_color='#ADD8E6', #para el recuadro del mundo mismo color que buttons y encabezado
+                hovertemplate='<b>%{label}</b><br>' + atributo + f' ({dict_unidades[atributo]}): ' + '%{value} <br>' + 'Porcentaje: %{customdata[0]:.2f}%<extra></extra>' #Etiqueta emergente.  <extra></extra> oculta el rastro por defecto que Plotly añade al final del tooltip https://plotly.com/python/hover-text-and-formatting/
             )
             fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
             return fig
@@ -642,7 +644,7 @@ def actualizar_geo(vista, atributo, año, num_paises):
            fig.add_annotation(
                 text="Un treemap no es una visualización apropiada para este tipo de atributo.",
                 x=0.5, y=0.5,
-                xref="paper", yref="paper",
+                xref="paper", yref="paper", #coordenadas x e y relacionadas con el área del gráfico entero ("paper"), no con los ejes de datos.
                 showarrow=False,
                 font=dict(size=20)
             )
@@ -683,7 +685,7 @@ def actualizar_geo(vista, atributo, año, num_paises):
         fig.update_yaxes(showgrid=False)
         fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGrey')
         fig.update_layout(
-            height=max(200, 20 * num_paises),  
+            height=max(400, 20 * num_paises),  
             plot_bgcolor="white", 
             showlegend=False,
             margin=dict(t=50, l=100, r=30, b=40)  
