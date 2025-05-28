@@ -479,7 +479,6 @@ app.layout = dbc.Container([  #sistema de rejilla de Bootstrap
             style={'fontSize': '20px', 'width': '100%', 'height': '80px',
                    'textAlign': 'center', 'backgroundColor': '#ADD8E6', 'color': '#002a77',
                    'border': 'none', 'outline': 'none', 'display': 'flex', 'alignItems': 'center'}),
-        dcc.Store(id="store-meta", data=False),
         html.Div([
             html.Br(),
             dbc.Row([
@@ -685,7 +684,7 @@ def actualizar_geo(vista, atributo, año, num_paises):
         fig.update_yaxes(showgrid=False)
         fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGrey')
         fig.update_layout(
-            height=max(400, 20 * num_paises),  
+            height=max(200, 20 * num_paises),  
             plot_bgcolor="white", 
             showlegend=False,
             margin=dict(t=50, l=100, r=30, b=40)  
@@ -1189,7 +1188,7 @@ def run_query(n_clicks, query):
 @app.callback(
     Output("download-link", "data"),       # Devuelve los datos preparados para descarga
     Input("download-csv", "n_clicks"),     # Clic en el botón de descarga
-    State("query-result-store", "data"),   # Estado: resultados almacenados de la consulta previa
+    State("query-result-store", "data"),   # Se usa State (no Input) para acceder a los datos sin disparar el callback cuando cambian. Resultados almacenados de la consulta previa
     prevent_initial_call=True              # Evita que se dispare al cargar la app por primera vez
 )
 def download_csv(n_clicks, query_data):  
@@ -1208,26 +1207,17 @@ def download_csv(n_clicks, query_data):
 # Callback para mostrar u ocultar la sección "Metadatos" al hacer clic en el botón
 @app.callback(
     Output("meta-content", "style"),   # Cambia el estilo (visible/oculto) del contenido
-    Output("store-meta", "data"),      # Actualiza el valor almacenado en el Store (True/False)
+    Output('meta-results', 'children'),  # Contenedor donde se inserta la tabla de metadatos
     Input("toggle-meta", "n_clicks"),  # Entrada: número de clics en el botón  
-    Input("store-meta", "data")        # Entrada: valor actual de visibilidad (True o False)
 )
-def toggle_meta(n_clicks, is_visible):
+def toggle_meta(n_clicks):
     n_clicks = n_clicks or 0  # Si aún no se ha hecho clic, se considera 0
     if n_clicks % 2 == 1:  # Si el número de clics es impar --> mostrar contenido
-        return {'display': 'block'}, True  
-    return {'display': 'none'}, False # Si es par -->ocultar contenido    
- 
- 
-@app.callback(
-    Output('meta-results', 'children'),  # Contenedor donde se inserta la tabla de metadatos
-    Input('store-meta', 'data')          # Se activa cuando cambia la visibilidad de la sección
-)
-def meta(is_visible):
+        
         # Se muestra el contenido del DataFrame de metadatos, omitiendo la primera columna (índice)
         result = df_metadatos.reset_index(drop=True).iloc[:, 1:]
         # Se muestran los metadatos en una tabla interactiva de Dash
-        return html.Div([
+        return {'display': 'block'}, html.Div([
             dash_table.DataTable(
                 columns=[{"name": col, "id": col} for col in result.columns],
                 data=result.to_dict('records'),
@@ -1237,7 +1227,8 @@ def meta(is_visible):
                 page_size=10,  
                 sort_action='native',    
             )
-        ])
+        ])  
+    return {'display': 'none'}, None # Si es par -->ocultar contenido    
 
 
 # Ejecuta la app con el servidor de desarrollo de Dash (debug desactivado), accesible desde cualquier IP en el puerto 7082.  La IP pública está configurada desde AWS para permitir el acceso externo.
