@@ -11,7 +11,7 @@ A continuación se describen los archivos incluidos:
 
 ## Enlace al dashboard
 
-Puedes acceder al panel interactivo en el enlace proporcionado en la memoria del TFM.
+Puedes acceder al panel interactivo mediante el enlace proporcionado en la memoria del TFM.
 
 ## Autor
 
