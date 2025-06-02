@@ -11,9 +11,7 @@ A continuación se describen los archivos incluidos:
 
 ## Enlace al dashboard
 
-Puedes acceder al panel interactivo en el siguiente enlace:
-
-🔗 [http://dashboard-jgg.duckdns.org:7082/](http://dashboard-jgg.duckdns.org:7082/)
+Puedes acceder al panel interactivo en el enlace proporcionado en la memoria del TFM.
 
 ## Autor
 
